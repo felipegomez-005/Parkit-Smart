@@ -1,0 +1,22 @@
+{
+  "name": "parkit-backend",
+  "version": "0.1.0",
+  "description": "Backend de ParkIt Smart: API REST (Express) + base de datos SQLite + tiempo real (Socket.IO).",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/db/seed.js"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}

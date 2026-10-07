@@ -1,0 +1,16 @@
+# dependencias
+node_modules/
+
+# base de datos y archivos generados
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# entorno
+.env
+
+# logs
+*.log
+npm-debug.log*
