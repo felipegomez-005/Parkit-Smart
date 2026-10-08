@@ -173,3 +173,54 @@ export function saveConfig(cfg) {
   );
   return getConfig();
 }
+
+// ---- Estado en tiempo real ------------------------------------------------
+
+const SPOT_SELECT = `
+  SELECT s.id, s.zone_id, s.number, s.label, s.status, s.x, s.y, s.polygon, s.updated_at,
+         z.name AS zone_name
+    FROM spots s
+    JOIN zones z ON z.id = s.zone_id
+`;
+
+function getSpotWhere(whereSql, param) {
+  const spot = db.prepare(`${SPOT_SELECT} ${whereSql}`).get(param);
+  return spot ? parsePolygon(spot) : null;
+}
+
+export function getSpotById(id) {
+  return getSpotWhere('WHERE s.id = ?', id);
+}
+
+export function getSpotByNumber(number) {
+  return getSpotWhere('WHERE s.number = ?', number);
+}
+
+export function updateSpotStatus(id, status) {
+  const info = db.prepare('UPDATE spots SET status = ?, updated_at = ? WHERE id = ?').run(
+    status,
+    new Date().toISOString(),
+    id
+  );
+  if (info.changes === 0) return null;
+  return getSpotById(id);
+}
+
+export function getVehicle() {
+  return db.prepare('SELECT * FROM vehicle WHERE id = 1').get();
+}
+
+export function updateVehicle(data) {
+  db.prepare(
+    `UPDATE vehicle
+        SET status = ?, position_x = ?, position_y = ?, orientation = ?, updated_at = ?
+      WHERE id = 1`
+  ).run(
+    data.status,
+    data.position_x,
+    data.position_y,
+    data.orientation,
+    new Date().toISOString()
+  );
+  return getVehicle();
+}

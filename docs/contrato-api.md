@@ -32,6 +32,10 @@
 | GET | `/api/spots` | Lista de plazas con su estado. Admite `?zone=<id>`. |
 | GET | `/api/config` | Metadatos de calibración (nombre, resolución, escala, homografía). |
 | PUT | `/api/config` | Actualiza los metadatos de calibración. |
+| PUT | `/api/spots/:id/status` | Cambia el estado de una plaza. Body: `{ "status": "libre" \| "ocupado" }`. |
+| POST | `/api/vision/spots` | OpenCV envía los estados detectados. Body: `{ "spots": [{ "number", "status" }] }`. |
+| POST | `/api/vision/vehicle` | OpenCV envía posición/orientación. Body: `{ x, y, orientation, status? }`. |
+| GET | `/api/vehicle` | Estado actual del vehículo. |
 
 ---
 
@@ -213,6 +217,60 @@ Con filtro: `GET /api/spots?zone=1` devuelve solo las plazas de esa zona.
 Envía los campos que quieras actualizar (p.ej. `{ "scale": 0.5, "homography": [...] }`)
 y devuelve la config actualizada.
 
+### PUT /api/spots/:id/status — cambiar estado de una plaza
+
+```json
+{ "status": "ocupado" }
+```
+
+- `status` solo puede ser `"libre"` o `"ocupado"` (si no, `400`).
+- Si la plaza no existe → `404`.
+- Devuelve la plaza actualizada. Si el estado no cambió, **no emite evento**.
+
+### POST /api/vision/spots — ingest de visión (estados)
+
+La cámara (OpenCV) envía los estados detectados. El backend actualiza las plazas y
+**emite `spot:update` por cada plaza que cambió**.
+
+```json
+{
+  "spots": [
+    { "number": "A1", "status": "ocupado" },
+    { "number": "B1", "status": "libre" }
+  ]
+}
+```
+
+- Devuelve un array con las plazas actualizadas.
+- Si alguna referencia es inválida (número inexistente o estado inválido) → `400`
+  con la lista de errores en `details`.
+
+### POST /api/vision/vehicle — ingest de visión (vehículo)
+
+La cámara (ArUco) envía la posición y orientación del auto. El backend guarda y
+**emite `vehicle:update`**.
+
+```json
+{ "x": 2.5, "y": 10.0, "orientation": 90 }
+```
+
+- `orientation` en grados. `status` es opcional (`buscando` por defecto).
+- Devuelve el estado del vehículo actualizado.
+
+### GET /api/vehicle
+
+```json
+{
+  "id": 1,
+  "status": "buscando",
+  "position_x": 2.5,
+  "position_y": 10.0,
+  "orientation": 90,
+  "parked_spot_id": null,
+  "updated_at": "..."
+}
+```
+
 ---
 
 ## Socket.IO (tiempo real)
@@ -222,10 +280,10 @@ y devuelve la config actualizada.
 
 | Evento | Dirección | Contenido |
 |--------|-----------|-----------|
-| `map:snapshot` | servidor → cliente | El mapa completo (igual a `GET /api/map`). |
-
-> Eventos futuros (próximo paso): `spot:update` y `vehicle:update`, para que el mapa
-> se refresque en vivo cuando cambie el estado de una plaza o la posición del auto.
+| `map:snapshot` | servidor → cliente | El mapa completo (igual a `GET /api/map`), al conectarse. |
+| `vehicle:snapshot` | servidor → cliente | El estado del vehículo, al conectarse. |
+| `spot:update` | servidor → cliente | Una plaza cambió de estado (payload = la plaza actualizada). |
+| `vehicle:update` | servidor → cliente | El estado del vehículo cambió (payload = el estado nuevo). |
 
 ---
 

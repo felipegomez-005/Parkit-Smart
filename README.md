@@ -106,18 +106,22 @@ Cámara → calibración (marcar plazas/zonas/luces/caminos) → PUT /api/map �
 | PUT    | `/api/map`       | Reemplaza el mapa completo (resultado de la calibración). |
 | GET    | `/api/config`    | Metadatos de la calibración.                        |
 | PUT    | `/api/config`    | Actualiza los metadatos de la calibración.          |
+| PUT    | `/api/spots/:id/status` | Cambia el estado de una plaza (`libre`/`ocupado`). |
+| POST   | `/api/vision/spots` | OpenCV envía los estados detectados de las plazas. |
+| POST   | `/api/vision/vehicle` | OpenCV envía posición/orientación del vehículo. |
+| GET    | `/api/vehicle`   | Estado actual del vehículo.                         |
 
 ### Socket.IO (eventos actuales)
 
-| Evento          | Dirección          | Descripción                                      |
-|-----------------|--------------------|--------------------------------------------------|
-| `map:snapshot`  | servidor → cliente | Estado completo del mapa al conectarse.          |
+| Evento             | Dirección          | Descripción                                      |
+|--------------------|--------------------|--------------------------------------------------|
+| `map:snapshot`     | servidor → cliente | Estado completo del mapa al conectarse.          |
+| `vehicle:snapshot` | servidor → cliente | Estado del vehículo al conectarse.               |
+| `spot:update`      | servidor → cliente | Una plaza cambió de estado.                      |
+| `vehicle:update`   | servidor → cliente | La posición/estado del vehículo cambió.          |
 
 ## Próximos pasos (roadmap)
 
-1. Endpoints de escritura: actualizar estado de plazas (`POST /api/spots/:id/status`).
-2. Ingest de visión: recibir estados y posición del vehículo desde OpenCV (HTTP/JSON).
-3. Socket.IO en tiempo real: `spot:update` y `vehicle:update` al cambiar algo.
-4. Rutas con **Dijkstra** sobre el grafo (`POST /api/route`).
-5. "Dónde está mi vehículo": guardar plaza y calcular ruta de retorno.
-6. Pruebas (plan de pruebas de la Fase 3) y datos de ejemplo para el frontend.
+1. Rutas con **Dijkstra** sobre el grafo (`POST /api/route`).
+2. "Dónde está mi vehículo": guardar plaza y calcular ruta de retorno.
+3. Pruebas (plan de pruebas de la Fase 3) y datos de ejemplo para el frontend.
