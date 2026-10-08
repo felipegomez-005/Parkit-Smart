@@ -224,3 +224,47 @@ export function updateVehicle(data) {
   );
   return getVehicle();
 }
+
+// ---- Grafo y navegación ---------------------------------------------------
+
+export function getGraph() {
+  const nodes = db
+    .prepare(
+      `SELECT n.id, n.label, n.type, n.x, n.y, n.spot_id, n.zone_id,
+              s.number AS spot_number, s.status AS spot_status
+         FROM nodes n
+         LEFT JOIN spots s ON s.id = n.spot_id
+        ORDER BY n.id`
+    )
+    .all();
+  const edges = db.prepare('SELECT node_a, node_b, weight FROM edges ORDER BY id').all();
+  return { nodes, edges };
+}
+
+export function parkVehicle(spotId) {
+  db.prepare(
+    `UPDATE vehicle
+        SET status = 'estacionado',
+            parked_spot_id = ?,
+            position_x = NULL,
+            position_y = NULL,
+            orientation = NULL,
+            updated_at = ?
+      WHERE id = 1`
+  ).run(spotId, new Date().toISOString());
+  return getVehicle();
+}
+
+export function getParkedSpot() {
+  const row = db
+    .prepare(
+      `SELECT s.id, s.zone_id, s.number, s.label, s.status, s.x, s.y, s.polygon, s.updated_at,
+              z.name AS zone_name
+         FROM vehicle v
+         JOIN spots s ON s.id = v.parked_spot_id
+         JOIN zones z ON z.id = s.zone_id
+        WHERE v.id = 1`
+    )
+    .get();
+  return row ? parsePolygon(row) : null;
+}

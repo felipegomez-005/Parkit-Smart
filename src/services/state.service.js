@@ -4,6 +4,8 @@ import {
   updateSpotStatus,
   getVehicle,
   updateVehicle,
+  parkVehicle,
+  getParkedSpot,
 } from '../db/repository.js';
 import { broadcast } from '../sockets/index.js';
 
@@ -95,4 +97,32 @@ export function setVehicleState(payload) {
 
 export function getVehicleState() {
   return getVehicle();
+}
+
+// Guarda la plaza donde estacionó el vehículo (y la marca ocupada para la demo).
+export function parkVehicleAtSpot(number) {
+  const spot = getSpotByNumber(number);
+  if (!spot) {
+    const err = new Error(`Plaza inexistente: "${number}".`);
+    err.status = 404;
+    throw err;
+  }
+  const vehicle = parkVehicle(spot.id);
+
+  // En producción la ocupación la detecta la cámara; aquí se marca para la demo.
+  if (spot.status !== 'ocupado') {
+    const updatedSpot = updateSpotStatus(spot.id, 'ocupado');
+    broadcast('spot:update', updatedSpot);
+  }
+
+  broadcast('vehicle:update', vehicle);
+  return { vehicle, spot: getSpotById(spot.id) };
+}
+
+// "Dónde está mi vehículo": devuelve el vehículo y la plaza guardada.
+export function getParkedSpotInfo() {
+  return {
+    vehicle: getVehicle(),
+    spot: getParkedSpot(),
+  };
 }

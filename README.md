@@ -110,6 +110,10 @@ Cámara → calibración (marcar plazas/zonas/luces/caminos) → PUT /api/map �
 | POST   | `/api/vision/spots` | OpenCV envía los estados detectados de las plazas. |
 | POST   | `/api/vision/vehicle` | OpenCV envía posición/orientación del vehículo. |
 | GET    | `/api/vehicle`   | Estado actual del vehículo.                         |
+| POST   | `/api/route`     | Ruta más corta entre dos nodos (Dijkstra). Body: `{from,to}` |
+| POST   | `/api/route/free-spot` | Plaza libre más cercana. Body: `{from?}`      |
+| POST   | `/api/vehicle/park` | Guarda la plaza donde estacionó. Body: `{spot}`   |
+| GET    | `/api/vehicle/parking` | "Dónde está mi vehículo".                       |
 
 ### Socket.IO (eventos actuales)
 
@@ -122,6 +126,4 @@ Cámara → calibración (marcar plazas/zonas/luces/caminos) → PUT /api/map �
 
 ## Próximos pasos (roadmap)
 
-1. Rutas con **Dijkstra** sobre el grafo (`POST /api/route`).
-2. "Dónde está mi vehículo": guardar plaza y calcular ruta de retorno.
-3. Pruebas (plan de pruebas de la Fase 3) y datos de ejemplo para el frontend.
+1. Pruebas (plan de pruebas de la Fase 3) y datos de ejemplo para el frontend.

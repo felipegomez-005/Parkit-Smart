@@ -36,6 +36,10 @@
 | POST | `/api/vision/spots` | OpenCV envía los estados detectados. Body: `{ "spots": [{ "number", "status" }] }`. |
 | POST | `/api/vision/vehicle` | OpenCV envía posición/orientación. Body: `{ x, y, orientation, status? }`. |
 | GET | `/api/vehicle` | Estado actual del vehículo. |
+| POST | `/api/route` | Ruta más corta entre dos nodos (Dijkstra). Body: `{ from, to }`. |
+| POST | `/api/route/free-spot` | Plaza libre más cercana (desde la entrada por defecto). Body: `{ from? }`. |
+| POST | `/api/vehicle/park` | Guarda la plaza donde estacionó. Body: `{ spot: "A1" }`. |
+| GET | `/api/vehicle/parking` | "Dónde está mi vehículo" (vehículo + plaza guardada). |
 
 ---
 
@@ -268,6 +272,83 @@ La cámara (ArUco) envía la posición y orientación del auto. El backend guard
   "orientation": 90,
   "parked_spot_id": null,
   "updated_at": "..."
+}
+```
+
+---
+
+## Navegación y vehículo
+
+### POST /api/route — ruta más corta entre dos nodos
+
+Calcula la ruta más corta (Dijkstra) entre dos nodos, referenciados por su `label`
+o por su `id`.
+
+```json
+{ "from": "Entrada", "to": "Plaza A1" }
+```
+
+Respuesta:
+
+```json
+{
+  "from": { "id": 1, "label": "Entrada", "type": "entrada", "x": 0, "y": 0 },
+  "to": { "id": 3, "label": "Plaza A1", "type": "plaza", "x": -10, "y": 20 },
+  "distance": 24.14,
+  "path": [
+    { "id": 1, "label": "Entrada", "type": "entrada", "x": 0, "y": 0 },
+    { "id": 2, "label": "Cruce central", "type": "cruce", "x": 0, "y": 10 },
+    { "id": 3, "label": "Plaza A1", "type": "plaza", "x": -10, "y": 20 }
+  ]
+}
+```
+
+- `distance` es la suma de los pesos de las aristas.
+- `path` es la lista ordenada de nodos (con sus coordenadas para dibujar la línea).
+- Si un nodo no existe o no hay ruta → `404`.
+
+### POST /api/route/free-spot — plaza libre más cercana
+
+Encuentra la plaza libre más cercana a un nodo (por defecto la **entrada**) y
+devuelve la ruta hasta ella.
+
+```json
+{ "from": "Entrada" }
+```
+
+Respuesta:
+
+```json
+{
+  "from": { "id": 1, "label": "Entrada", "type": "entrada", "x": 0, "y": 0 },
+  "spot": { "number": "B1", "status": "libre" },
+  "distance": 20,
+  "path": [ "...nodos en orden..." ]
+}
+```
+
+- Si no hay plazas libres → `404`.
+
+### POST /api/vehicle/park — guardar plaza al estacionar
+
+Guarda la plaza donde el vehículo estacionó y la marca como `ocupado` (para la demo;
+en producción la ocupación la detecta la cámara).
+
+```json
+{ "spot": "A1" }
+```
+
+- Devuelve `{ vehicle, spot }`.
+- Si la plaza no existe → `404`.
+
+### GET /api/vehicle/parking — "Dónde está mi vehículo"
+
+Devuelve el vehículo y la plaza guardada (o `spot: null` si aún no estacionó).
+
+```json
+{
+  "vehicle": { "id": 1, "status": "estacionado", "parked_spot_id": 1 },
+  "spot": { "id": 1, "number": "A1", "label": "Plaza A1", "zone_name": "Zona A" }
 }
 ```
 

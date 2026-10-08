@@ -5,6 +5,7 @@ import spotRoutes from './spots.routes.js';
 import configRoutes from './config.routes.js';
 import visionRoutes from './vision.routes.js';
 import vehicleRoutes from './vehicle.routes.js';
+import routeRoutes from './route.routes.js';
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use('/spots', spotRoutes);
 router.use('/config', configRoutes);
 router.use('/vision', visionRoutes);
 router.use('/vehicle', vehicleRoutes);
+router.use('/route', routeRoutes);
 
 export default router;
