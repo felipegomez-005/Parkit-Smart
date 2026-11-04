@@ -1,4 +1,5 @@
 import {
+  getMap,
   getSpotById,
   getSpotByNumber,
   updateSpotStatus,
@@ -6,6 +7,8 @@ import {
   updateVehicle,
   parkVehicle,
   getParkedSpot,
+  resetState,
+  clearParkedSpot,
 } from '../db/repository.js';
 import { broadcast } from '../sockets/index.js';
 
@@ -125,4 +128,40 @@ export function getParkedSpotInfo() {
     vehicle: getVehicle(),
     spot: getParkedSpot(),
   };
+}
+
+// Restaura el estado de demostración (plazas libres, vehículo desconectado).
+// Emite eventos solo para las plazas que cambian y para el vehículo.
+export function resetSystem() {
+  const before = new Map(getMap().spots.map((s) => [s.number, s.status]));
+  const map = resetState();
+
+  for (const spot of map.spots) {
+    if (before.get(spot.number) !== 'libre') {
+      broadcast('spot:update', spot);
+    }
+  }
+
+  const vehicle = getVehicle();
+  broadcast('vehicle:update', vehicle);
+  return { map, vehicle };
+}
+
+// Libera la plaza guardada (el vehículo se va) y la deja disponible.
+export function unparkVehicle() {
+  const { vehicle, releasedSpotId } = clearParkedSpot();
+
+  let spot = null;
+  if (releasedSpotId !== null) {
+    const current = getSpotById(releasedSpotId);
+    if (current && current.status !== 'libre') {
+      spot = updateSpotStatus(releasedSpotId, 'libre');
+      broadcast('spot:update', spot);
+    } else {
+      spot = current;
+    }
+  }
+
+  broadcast('vehicle:update', vehicle);
+  return { vehicle, spot };
 }

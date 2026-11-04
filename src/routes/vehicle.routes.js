@@ -3,6 +3,7 @@ import {
   getVehicleState,
   parkVehicleAtSpot,
   getParkedSpotInfo,
+  unparkVehicle,
 } from '../services/state.service.js';
 
 const router = Router();
@@ -24,6 +25,15 @@ router.post('/park', (req, res) => {
 // GET /api/vehicle/parking -> "Dónde está mi vehículo".
 router.get('/parking', (req, res) => {
   res.json(getParkedSpotInfo());
+});
+
+// POST /api/vehicle/unpark -> libera la plaza guardada (el vehículo se va).
+router.post('/unpark', (req, res) => {
+  try {
+    res.json(unparkVehicle());
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message, details: err.details ?? undefined });
+  }
 });
 
 export default router;

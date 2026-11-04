@@ -114,6 +114,8 @@ Cámara → calibración (marcar plazas/zonas/luces/caminos) → PUT /api/map �
 | POST   | `/api/route/free-spot` | Plaza libre más cercana. Body: `{from?}`      |
 | POST   | `/api/vehicle/park` | Guarda la plaza donde estacionó. Body: `{spot}`   |
 | GET    | `/api/vehicle/parking` | "Dónde está mi vehículo".                       |
+| POST   | `/api/vehicle/unpark` | Libera la plaza guardada (el vehículo se va).    |
+| POST   | `/api/reset`    | Restaura el estado de demostración.              |
 
 ### Socket.IO (eventos actuales)
 

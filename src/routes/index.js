@@ -6,6 +6,7 @@ import configRoutes from './config.routes.js';
 import visionRoutes from './vision.routes.js';
 import vehicleRoutes from './vehicle.routes.js';
 import routeRoutes from './route.routes.js';
+import { resetSystem } from '../services/state.service.js';
 
 const router = Router();
 
@@ -15,6 +16,15 @@ router.get('/health', (req, res) => {
     service: 'parkit-backend',
     time: new Date().toISOString(),
   });
+});
+
+// POST /api/reset -> restaura el estado de demostración (plazas libres, vehículo desconectado).
+router.post('/reset', (req, res) => {
+  try {
+    res.json(resetSystem());
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
 });
 
 router.use('/map', mapRoutes);

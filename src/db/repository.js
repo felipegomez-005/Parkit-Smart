@@ -268,3 +268,41 @@ export function getParkedSpot() {
     .get();
   return row ? parsePolygon(row) : null;
 }
+
+// ---- Utilidades de desarrollo / flujo completo ------------------------------
+
+// Restaura el estado de demostración: todas las plazas libres y vehículo
+// desconectado. No modifica la configuración del mapa calibrado.
+export function resetState() {
+  const now = new Date().toISOString();
+  db.prepare("UPDATE spots SET status = 'libre', updated_at = ?").run(now);
+  db.prepare(
+    `UPDATE vehicle
+        SET status = 'desconectado',
+            parked_spot_id = NULL,
+            position_x = NULL,
+            position_y = NULL,
+            orientation = NULL,
+            updated_at = ?
+      WHERE id = 1`
+  ).run(now);
+  return getMap();
+}
+
+// Libera la plaza guardada (el vehículo se va). Devuelve el estado del vehículo
+// y el id de la plaza que quedó liberada (o null si no había ninguna).
+export function clearParkedSpot() {
+  const current = getVehicle();
+  const releasedSpotId = current.parked_spot_id ?? null;
+  db.prepare(
+    `UPDATE vehicle
+        SET status = 'desconectado',
+            parked_spot_id = NULL,
+            position_x = NULL,
+            position_y = NULL,
+            orientation = NULL,
+            updated_at = ?
+      WHERE id = 1`
+  ).run(new Date().toISOString());
+  return { vehicle: getVehicle(), releasedSpotId };
+}

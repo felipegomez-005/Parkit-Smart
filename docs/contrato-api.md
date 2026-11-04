@@ -40,6 +40,8 @@
 | POST | `/api/route/free-spot` | Plaza libre más cercana (desde la entrada por defecto). Body: `{ from? }`. |
 | POST | `/api/vehicle/park` | Guarda la plaza donde estacionó. Body: `{ spot: "A1" }`. |
 | GET | `/api/vehicle/parking` | "Dónde está mi vehículo" (vehículo + plaza guardada). |
+| POST | `/api/vehicle/unpark` | Libera la plaza guardada (el vehículo se va). |
+| POST | `/api/reset` | Restaura el estado de demostración (plazas libres, vehículo desconectado). |
 
 ---
 
