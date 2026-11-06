@@ -89,6 +89,35 @@ function resolveStart(graph, ref) {
 }
 
 // Ruta más corta entre dos nodos (por id o por label).
+const TURN_THRESHOLD = Math.PI / 6; // 30 grados
+
+// Agrega a cada nodo del camino la instrucción de giro (recto/izquierda/derecha).
+// El primer nodo es "inicio" y el último "destino".
+function addInstructions(path) {
+  return path.map((node, i) => {
+    if (i === 0) return { ...node, instruction: 'inicio' };
+    if (i === path.length - 1) return { ...node, instruction: 'destino' };
+
+    const prev = path[i - 1];
+    const next = path[i + 1];
+    const ix = node.x - prev.x;
+    const iy = node.y - prev.y;
+    const ox = next.x - node.x;
+    const oy = next.y - node.y;
+
+    const cross = ix * oy - iy * ox; // > 0 = giro a la izquierda (antihorario)
+    const dot = ix * ox + iy * oy;
+    const angle = Math.atan2(cross, dot);
+
+    let instruction;
+    if (Math.abs(angle) < TURN_THRESHOLD) instruction = 'recto';
+    else if (angle > 0) instruction = 'izquierda';
+    else instruction = 'derecha';
+
+    return { ...node, instruction };
+  });
+}
+
 export function shortestPath(fromRef, toRef) {
   const graph = buildGraph();
   const fromId = resolveNodeId(graph, fromRef);
@@ -104,7 +133,7 @@ export function shortestPath(fromRef, toRef) {
     err.status = 404;
     throw err;
   }
-  const path = reconstructPath(prev, fromId, toId).map((id) => graph.nodes.get(id));
+  const path = addInstructions(reconstructPath(prev, fromId, toId).map((id) => graph.nodes.get(id)));
   return {
     from: graph.nodes.get(fromId),
     to: graph.nodes.get(toId),
@@ -142,7 +171,7 @@ export function nearestFreeSpot(fromRef) {
     throw err;
   }
 
-  const path = reconstructPath(prev, fromId, best.id).map((id) => graph.nodes.get(id));
+  const path = addInstructions(reconstructPath(prev, fromId, best.id).map((id) => graph.nodes.get(id)));
   return {
     from: graph.nodes.get(fromId),
     spot: { number: best.node.spot_number, status: best.node.spot_status },

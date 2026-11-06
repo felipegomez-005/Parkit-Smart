@@ -346,15 +346,17 @@ Respuesta:
   "to": { "id": 3, "label": "Plaza A1", "type": "plaza", "x": -10, "y": 20 },
   "distance": 24.14,
   "path": [
-    { "id": 1, "label": "Entrada", "type": "entrada", "x": 0, "y": 0 },
-    { "id": 2, "label": "Cruce central", "type": "cruce", "x": 0, "y": 10 },
-    { "id": 3, "label": "Plaza A1", "type": "plaza", "x": -10, "y": 20 }
+    { "id": 1, "label": "Entrada", "type": "entrada", "x": 0, "y": 0, "instruction": "inicio" },
+    { "id": 2, "label": "Cruce central", "type": "cruce", "x": 0, "y": 10, "instruction": "izquierda" },
+    { "id": 3, "label": "Plaza A1", "type": "plaza", "x": -10, "y": 20, "instruction": "destino" }
   ]
 }
 ```
 
 - `distance` es la suma de los pesos de las aristas.
 - `path` es la lista ordenada de nodos (con sus coordenadas para dibujar la línea).
+- Cada nodo del `path` incluye `instruction`: `inicio`, `recto`, `izquierda`,
+  `derecha` o `destino`. Sirve para mostrar las indicaciones de giro.
 - Si un nodo no existe o no hay ruta → `404`.
 
 ### POST /api/route/free-spot — plaza libre más cercana
