@@ -16,6 +16,8 @@ const config = {
   host: process.env.HOST || '0.0.0.0',
   dbPath: path.resolve(rootDir, process.env.DB_PATH || './data/parkit.db'),
   corsOrigin: process.env.CORS_ORIGIN || '*',
+  jwtSecret: process.env.JWT_SECRET || 'parkit-dev-secret-cambiar-en-produccion',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
 };
 
 export default config;

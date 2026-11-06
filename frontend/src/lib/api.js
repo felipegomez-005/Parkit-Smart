@@ -6,10 +6,28 @@
 
 const BASE_URL = (import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:3000';
 
+let authToken = null;
+
+export function setAuthToken(token) {
+  authToken = token;
+}
+
+export function getAuthToken() {
+  return authToken;
+}
+
+export function logout() {
+  authToken = null;
+}
+
 async function request(method, path, body) {
+  const headers = {};
+  if (body) headers['Content-Type'] = 'application/json';
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -27,6 +45,19 @@ async function request(method, path, body) {
 export const api = {
   // ---- Estado -------------------------------------------------------------
   health: () => request('GET', '/api/health'),
+
+  // ---- Autenticación ------------------------------------------------------
+  register: async (name, email, password) => {
+    const r = await request('POST', '/api/auth/register', { name, email, password });
+    if (r.token) setAuthToken(r.token);
+    return r;
+  },
+  login: async (email, password) => {
+    const r = await request('POST', '/api/auth/login', { email, password });
+    if (r.token) setAuthToken(r.token);
+    return r;
+  },
+  me: () => request('GET', '/api/auth/me'),
 
   // ---- Mapa y configuración ------------------------------------------------
   getMap: () => request('GET', '/api/map'),

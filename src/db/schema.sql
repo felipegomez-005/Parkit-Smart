@@ -85,6 +85,15 @@ CREATE TABLE IF NOT EXISTS map_config (
   updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
+-- Usuarios de la aplicación (registro e inicio de sesión).
+CREATE TABLE IF NOT EXISTS users (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  name          TEXT NOT NULL,
+  email         TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
 INSERT OR IGNORE INTO vehicle (id, status) VALUES (1, 'desconectado');
 INSERT OR IGNORE INTO map_config (id, name) VALUES (1, 'Parking');
 

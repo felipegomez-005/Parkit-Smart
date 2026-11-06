@@ -42,6 +42,54 @@
 | GET | `/api/vehicle/parking` | "Dónde está mi vehículo" (vehículo + plaza guardada). |
 | POST | `/api/vehicle/unpark` | Libera la plaza guardada (el vehículo se va). |
 | POST | `/api/reset` | Restaura el estado de demostración (plazas libres, vehículo desconectado). |
+| POST | `/api/auth/register` | Crea una cuenta. Body: `{ name, email, password }`. |
+| POST | `/api/auth/login` | Inicia sesión. Body: `{ email, password }` → devuelve `{ token, user }`. |
+| GET | `/api/auth/me` | Usuario actual (requiere `Authorization: Bearer <token>`). |
+
+---
+
+## Autenticación (registro e inicio de sesión)
+
+La app móvil usa **JWT**. Al registrarse o iniciar sesión, el backend devuelve un
+`token` que el cliente envía en las peticiones protegidas con la cabecera
+`Authorization: Bearer <token>`.
+
+### POST /api/auth/register
+
+```json
+{ "name": "Felipe Gomez", "email": "felipe@test.com", "password": "secreto123" }
+```
+
+Respuesta `201`:
+
+```json
+{ "token": "...", "user": { "id": 1, "name": "Felipe Gomez", "email": "felipe@test.com" } }
+```
+
+- `email` debe ser único y válido; `password` debe tener al menos 6 caracteres.
+- El correo ya registrado responde `409`.
+
+### POST /api/auth/login
+
+```json
+{ "email": "felipe@test.com", "password": "secreto123" }
+```
+
+Respuesta `200`: igual que register (`{ token, user }`). Credenciales inválidas → `401`.
+
+### GET /api/auth/me
+
+Devuelve el usuario del token:
+
+```
+Authorization: Bearer <token>
+```
+
+```json
+{ "user": { "id": 1, "name": "Felipe Gomez", "email": "felipe@test.com" } }
+```
+
+Sin token o token inválido → `401`.
 
 ---
 

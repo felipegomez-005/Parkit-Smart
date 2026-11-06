@@ -6,6 +6,7 @@ import configRoutes from './config.routes.js';
 import visionRoutes from './vision.routes.js';
 import vehicleRoutes from './vehicle.routes.js';
 import routeRoutes from './route.routes.js';
+import authRoutes from './auth.routes.js';
 import { resetSystem } from '../services/state.service.js';
 
 const router = Router();
@@ -34,5 +35,6 @@ router.use('/config', configRoutes);
 router.use('/vision', visionRoutes);
 router.use('/vehicle', vehicleRoutes);
 router.use('/route', routeRoutes);
+router.use('/auth', authRoutes);
 
 export default router;

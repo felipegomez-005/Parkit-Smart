@@ -101,6 +101,9 @@ Los datos de `npm run seed` son solo un **ejemplo** (la maqueta de 3 plazas).
 | POST | `/api/route` | Ruta más corta entre dos nodos (Dijkstra) |
 | POST | `/api/route/free-spot` | Plaza libre más cercana |
 | POST | `/api/reset` | Restaurar el estado de demostración |
+| POST | `/api/auth/register` | Crear una cuenta |
+| POST | `/api/auth/login` | Iniciar sesión (devuelve token JWT) |
+| GET | `/api/auth/me` | Usuario actual (requiere token) |
 
 ### Socket.IO (eventos)
 

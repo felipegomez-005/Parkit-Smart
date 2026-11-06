@@ -306,3 +306,21 @@ export function clearParkedSpot() {
   ).run(new Date().toISOString());
   return { vehicle: getVehicle(), releasedSpotId };
 }
+
+// ---- Usuarios --------------------------------------------------------------
+
+export function getUserByEmail(email) {
+  return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+}
+
+// Devuelve solo campos seguros (sin el hash de la contraseña).
+export function getUserById(id) {
+  return db.prepare('SELECT id, name, email, created_at FROM users WHERE id = ?').get(id);
+}
+
+export function createUser(name, email, passwordHash) {
+  const info = db
+    .prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)')
+    .run(name, email, passwordHash);
+  return getUserById(Number(info.lastInsertRowid));
+}
