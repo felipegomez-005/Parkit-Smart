@@ -120,6 +120,7 @@ Los datos de `npm run seed` son solo un **ejemplo** (la maqueta de 3 plazas).
 
 - **Contrato de API** (para el frontend): [`docs/contrato-api.md`](docs/contrato-api.md)
 - **Kit del frontend** (capa de datos): [`frontend/README.md`](frontend/README.md)
+- **Camino a móvil (Capacitor)**: [`docs/movil.md`](docs/movil.md)
 
 ## Próximos pasos
 
