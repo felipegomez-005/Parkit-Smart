@@ -1,72 +1,61 @@
-# ParkIt Frontend — Kit base (capa de datos)
+# ParkIt Smart — Frontend
 
-Base del frontend de **ParkIt Smart**. Contiene la **capa de datos** (HTTP + tiempo
-real) lista para usar desde cualquier framework (React, Vue, vanilla). **No decide el
-diseño de la interfaz**, así que Cristian puede montarla sobre lo que quiera.
+Frontend React + Vite para la maqueta subterránea de ParkIt Smart. La interfaz toma como referencia la estética clara y minimalista de Apple Maps, pero utiliza un plano SVG propio (no un mapa geográfico externo).
 
-## Qué contiene
+## Requisitos
 
-| Archivo | Qué hace |
-|---------|----------|
-| `src/lib/api.js` | Cliente HTTP con una función por cada endpoint del backend |
-| `src/lib/socket.js` | Cliente Socket.IO con suscripción a los eventos en tiempo real |
+- Node.js 22.13 o superior (el backend lo requiere).
+- npm.
 
-## Cómo usarlo
+## Ejecutar el proyecto
 
-```js
-import { api } from './lib/api.js';
-import { subscribe } from './lib/socket.js';
+Abre dos terminales desde la carpeta raíz del repositorio.
 
-// 1) Traer el mapa completo
-const map = await api.getMap();
-// map = { zones, spots, pillars, lights, nodes, edges }
+### 1. Backend
 
-// 2) Suscribirse a cambios en tiempo real
-const off = subscribe({
-  onSpotUpdate: (spot) => console.log('cambió', spot.number, spot.status),
-  onVehicleUpdate: (vehicle) => console.log('vehículo', vehicle),
-});
-
-// 3) Plaza libre más cercana y su ruta (Dijkstra)
-const ruta = await api.getFreeSpot('Entrada');
-// ruta = { from, spot, distance, path }
-
-// 4) Estacionar y "dónde está mi vehículo"
-await api.park('A1');
-const miAuto = await api.getParking();
-await api.unpark();
-
-// 5) Reset de desarrollo
-await api.reset();
-
-// al salir de la pantalla
-off();
+```bash
+npm install
+npm run seed
+npm run dev
 ```
 
-## Configuración
+El backend queda disponible en `http://localhost:3000`.
 
-Define la URL del backend en una variable de entorno (Vite):
+### 2. Frontend
 
+```bash
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
 ```
-# .env
-VITE_API_URL=http://localhost:3000
+
+Vite mostrará la dirección local, normalmente `http://localhost:5173`.
+
+En Windows PowerShell, para crear el archivo de entorno:
+
+```powershell
+Copy-Item .env.example .env
 ```
 
-Si no se define, usa `http://localhost:3000` por defecto.
+Si el backend corre en otra dirección, cambia `VITE_API_URL` en `frontend/.env`.
 
-## Dirección del diseño (Google Maps)
+## Funciones incluidas
 
-La capa de datos **no depende del diseño**. Para una UI tipo Google Maps, el siguiente
-paso sería:
+- Plano interactivo con seis plazas: P1–P6, agrupadas en los sectores A, B y C.
+- Selección de plaza desde el mapa o desde el listado lateral.
+- Estados disponible/ocupada conectados a la API.
+- Cálculo de ruta mediante `POST /api/route` (Dijkstra) y búsqueda de plaza libre mediante `POST /api/route/free-spot`.
+- Registro y retiro del vehículo mediante los endpoints existentes.
+- Actualización de mapa, plazas y vehículo mediante Socket.IO.
+- Modo demostración cuando la API no está disponible.
 
-- Renderizar `map.spots` como **marcadores/pins** sobre un lienzo (`<canvas>` o SVG).
-- Color por estado: **verde = libre**, **rojo = ocupado** (igual que los LEDs).
-- Dibujar `map.nodes` y `map.edges` como la red de caminos (fondo, gris claro).
-- Dibujar la ruta (`path`) como una **polilínea azul**, al estilo de Google Maps.
-- Mover el auto (marcador azul) con `vehicle:update`.
+## Plano y coordenadas
 
-## Siguiente paso
+El componente `src/components/ParkingMap.jsx` dibuja el plano con SVG en un `viewBox` de `688 × 388`. Las coordenadas de plazas y nodos del seed del backend utilizan ese mismo sistema. Para modificar la distribución visual, actualiza el SVG y los datos de `src/db/seed.js` manteniendo la correspondencia de coordenadas.
 
-1. Scaffold React + Vite: `npm create vite@latest parkit-frontend -- --template react`.
-2. Instalar dependencias: `npm i socket.io-client`.
-3. Montar estos módulos en un componente de mapa y pintar los marcadores.
+## Notas
+
+- `npm run seed` vuelve a cargar el mapa de demostración y restablece el estado del vehículo. No lo ejecutes si ya tienes datos reales que quieras conservar.
+- La primera versión incluye un plano vectorial estilizado basado en la imagen de referencia; no es todavía una reconstrucción fotogramétrica de la maqueta.
+- Los cambios de estado de las plazas se guardan en el backend cuando existe conexión. En modo demostración, los cambios solo viven en el estado del navegador.
