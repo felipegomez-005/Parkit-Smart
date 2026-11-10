@@ -4,7 +4,9 @@
 // Requiere solo `fetch` (nativo en navegadores y Node >= 18).
 // ---------------------------------------------------------------------------
 
-const BASE_URL = (import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:3000';
+// En producción el frontend se sirve desde el propio backend, así que se usa la
+// misma URL (''). En desarrollo se define VITE_API_URL=http://localhost:3000 en .env.
+const BASE_URL = (import.meta.env && import.meta.env.VITE_API_URL) || '';
 
 let authToken = null;
 

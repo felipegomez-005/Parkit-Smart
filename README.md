@@ -37,6 +37,6 @@ Configura `VITE_API_URL` en `frontend/.env` si el backend no está en `http://lo
 
 El frontend utiliza una estética clara inspirada en Apple Maps y un plano SVG personalizado de la maqueta: sectores A, B y C; plazas P1–P6; entrada inferior; pasillos, rampa y obstáculos. Permite seleccionar plazas, visualizar rutas Dijkstra, revisar disponibilidad y registrar/retirar el vehículo.
 
-Consulta `frontend/README.md` para detalles del frontend y `docs/contrato-api.md` para el contrato de la API.
+Consulta `frontend/README.md` para detalles del frontend, `docs/contrato-api.md` para el contrato de la API y `docs/deploy-aws.md` para desplegar todo en AWS.
 
 > `npm run seed` carga el plano de demostración y reinicia el estado del vehículo. No lo ejecutes sobre una base de datos con información que quieras conservar.

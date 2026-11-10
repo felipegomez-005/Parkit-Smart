@@ -6,7 +6,9 @@
 
 import { io } from 'socket.io-client';
 
-const BASE_URL = (import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:3000';
+// En producción se usa la misma URL del backend (''). En desarrollo se define
+// VITE_API_URL=http://localhost:3000 en .env.
+const BASE_URL = (import.meta.env && import.meta.env.VITE_API_URL) || '';
 
 let socket = null;
 
