@@ -439,6 +439,19 @@ Devuelve el vehículo y la plaza guardada (o `spot: null` si aún no estacionó)
 ## Socket.IO (tiempo real)
 
 - URL: `http://localhost:3000` (mismo puerto).
+- **Requiere autenticación**: hay que enviar el JWT obtenido en `POST /api/auth/login` (o `/register`) en `auth.token` del handshake:
+
+```js
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:3000', {
+  auth: { token }, // JWT de /api/auth/login
+});
+
+socket.on('connect_error', (err) => console.error(err.message)); // "Token inválido o ausente"
+```
+
+  Si el token falta o es inválido, la conexión se rechaza y el cliente recibe `connect_error` con el mensaje `Token inválido o ausente`. Las rutas REST de `/api/vision/*` siguen sin autenticación.
 - Al conectarse, el servidor envía:
 
 | Evento | Dirección | Contenido |
