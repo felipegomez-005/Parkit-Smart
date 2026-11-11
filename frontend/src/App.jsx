@@ -110,6 +110,20 @@ export default function App() {
     }
   };
 
+  // Ruta de regreso al vehículo: origen "Entrada", destino "parked" (la plaza guardada en el backend).
+  const returnToVehicle = async () => {
+    setBusy(true); setNotice('');
+    try {
+      const data = await api.getRoute('Entrada', 'parked');
+      setRouteFrom('Entrada');
+      if (parkedSpot?.number) setSelected(parkedSpot.number);
+      setRoute(data);
+    } catch (error) {
+      setRoute(null);
+      setNotice(error.status === 404 ? 'No hay una plaza guardada para tu vehículo.' : 'No se pudo calcular la ruta de regreso a tu vehículo.');
+    } finally { setBusy(false); }
+  };
+
   const findNearest = async () => {
     setBusy(true); setNotice('');
     try {
@@ -188,6 +202,7 @@ export default function App() {
         {route?.path?.length > 0 && <div className="instruction-card"><span className="instruction-icon"><ArrowUp size={20}/></span><div><small>INDICACIÓN DE RUTA</small><strong>{route.path.length > 2 ? 'Continúa por el pasillo indicado' : 'Dirígete hacia tu plaza'}</strong><small>{route.path.length} puntos de navegación</small></div></div>}
         {notice && <div className="notice"><span>{notice}</span><button onClick={() => setNotice('')}><X size={14}/></button></div>}
         <div className="detail-actions"><button className="primary-action" onClick={() => requestRoute(selected)} disabled={!selectedSpot || busy}><Navigation size={17}/> Trazar ruta</button><button className="secondary-action" onClick={park} disabled={!selectedSpot || selectedSpot.status !== 'libre' || busy}><Check size={17}/> Estacionar aquí</button></div>
+        {vehicle?.status === 'estacionado' && parkedSpot && <button className="secondary-action" onClick={returnToVehicle} disabled={busy}><Navigation size={16}/> Volver a mi vehículo</button>}
         {vehicle?.status === 'estacionado' && <button className="unpark-action" onClick={unpark} disabled={busy}><CarFront size={16}/> Retirar mi vehículo</button>}
         <div className="detail-meta"><span><Clock3 size={14}/> Acceso inmediato</span><span><ShieldCheck size={14}/> Zona monitoreada</span></div>
         <div className="panel-bottom-note">ParkIt Smart <span>·</span> Navegación inteligente</div>
