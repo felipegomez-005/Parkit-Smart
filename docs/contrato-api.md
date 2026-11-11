@@ -358,6 +358,10 @@ Respuesta:
 - Cada nodo del `path` incluye `instruction`: `inicio`, `recto`, `izquierda`,
   `derecha` o `destino`. Sirve para mostrar las indicaciones de giro.
 - Si un nodo no existe o no hay ruta → `404`.
+- **Origen desde el vehículo:** `"from": "vehicle"` usa la posición actual del
+  vehículo (`position_x`, `position_y`), la lleva al nodo del grafo más cercano
+  (distancia euclidiana) y parte desde ahí. El `from` de la respuesta es ese nodo.
+  Si el vehículo no tiene posición → `400` con `{ "error": "..." }`.
 
 ### POST /api/route/free-spot — plaza libre más cercana
 
@@ -380,6 +384,8 @@ Respuesta:
 ```
 
 - Si no hay plazas libres → `404`.
+- `"from": "vehicle"` funciona igual que en `/api/route`: parte desde el nodo más
+  cercano a la posición actual del vehículo; sin posición → `400`.
 
 ### POST /api/vehicle/park — guardar plaza al estacionar
 
