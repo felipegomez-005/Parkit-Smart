@@ -1,7 +1,7 @@
 // Service worker de ParkIt: permite instalar la app (PWA) y cachear la interfaz.
 // NO cachea la API (/api/*), que siempre va a la red.
 
-const CACHE_NAME = 'parkit-cache-v1';
+const CACHE_NAME = 'parkit-cache-v2';
 const CORE = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
