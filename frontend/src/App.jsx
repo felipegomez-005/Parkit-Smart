@@ -19,6 +19,7 @@ export default function App() {
   const [spots, setSpots] = useState(INITIAL_SPOTS);
   const [selected, setSelected] = useState('P1');
   const [route, setRoute] = useState(null);
+  const [routeFrom, setRouteFrom] = useState(null);
   const [vehicle, setVehicle] = useState(null);
   const [connected, setConnected] = useState(false);
   const [apiReady, setApiReady] = useState(false);
@@ -78,11 +79,30 @@ export default function App() {
     return () => { off(); socket.off('connect', onConnect); socket.off('disconnect', onDisconnect); };
   }, [refresh]);
 
+  // Origen de la ruta: la posición real del vehículo si la tiene; si no (o si el backend responde 400), "Entrada".
+  const vehicleHasPosition = vehicle?.position_x != null && vehicle?.position_y != null;
+  const originLabel = (routeFrom ?? (vehicleHasPosition ? 'vehicle' : 'Entrada')) === 'vehicle' ? 'Tu vehículo' : 'Entrada principal';
+
+  const withOrigin = async (call) => {
+    if (vehicleHasPosition) {
+      try {
+        const data = await call('vehicle');
+        setRouteFrom('vehicle');
+        return data;
+      } catch (error) {
+        if (error.status !== 400) throw error;
+      }
+    }
+    const data = await call('Entrada');
+    setRouteFrom('Entrada');
+    return data;
+  };
+
   const requestRoute = async (spotNumber) => {
     setSelected(spotNumber);
     setNotice('');
     try {
-      const data = await api.getRoute('Entrada', `Plaza ${spotNumber}`);
+      const data = await withOrigin((from) => api.getRoute(from, `Plaza ${spotNumber}`));
       setRoute(data);
     } catch {
       setRoute(null);
@@ -93,7 +113,7 @@ export default function App() {
   const findNearest = async () => {
     setBusy(true); setNotice('');
     try {
-      const result = await api.getFreeSpot('Entrada');
+      const result = await withOrigin((from) => api.getFreeSpot(from));
       if (result?.spot?.number) {
         setSelected(result.spot.number); setRoute(result);
         setNotice(`Encontramos ${result.spot.number}, la plaza disponible más cercana.`);
@@ -164,7 +184,7 @@ export default function App() {
         {activeTab === 'vehiculo' && <div className="destination-preview"><div className="preview-icon"><CarFront size={23}/></div><div><small>MI VEHÍCULO</small><strong>{parkedSpot ? `Plaza ${parkedSpot.number}` : 'Sin plaza guardada'}</strong><small>{parkedSpot ? (parkedSpot.zone_name || 'Estacionamiento') : 'Estaciona para guardar tu plaza'}</small></div></div>}
         <div className="detail-header"><div><p className="eyebrow">DESTINO SELECCIONADO</p><h2>{selectedSpot?.number || 'Selecciona una plaza'}</h2><p>{selectedSpot?.zone_name || 'Explora el plano para elegir'}</p></div><span className={`big-status ${selectedSpot?.status === 'libre' ? 'free' : 'busy'}`}><i/>{selectedSpot ? statusLabel(selectedSpot.status) : 'Sin selección'}</span></div>
         <div className="destination-preview"><div className="preview-icon"><MapPin size={23}/></div><div><strong>{selectedSpot?.zone_name || 'Estacionamiento ParkIt'}</strong><small>{selectedSpot ? `Plaza ${selectedSpot.number} · Nivel -1` : 'Nivel subterráneo'}</small></div><span className="preview-distance"><Navigation size={14}/>{route?.distance ? `${route.distance.toFixed(0)} m` : '—'}</span></div>
-        <div className="route-summary"><div className="route-line"><span className="route-origin"/><div/><span className="route-destination"/></div><div className="route-copy"><div><small>DESDE</small><strong>Entrada principal</strong></div><div><small>HASTA</small><strong>{selectedSpot?.number || '—'}</strong></div></div></div>
+        <div className="route-summary"><div className="route-line"><span className="route-origin"/><div/><span className="route-destination"/></div><div className="route-copy"><div><small>DESDE</small><strong>{originLabel}</strong></div><div><small>HASTA</small><strong>{selectedSpot?.number || '—'}</strong></div></div></div>
         {route?.path?.length > 0 && <div className="instruction-card"><span className="instruction-icon"><ArrowUp size={20}/></span><div><small>INDICACIÓN DE RUTA</small><strong>{route.path.length > 2 ? 'Continúa por el pasillo indicado' : 'Dirígete hacia tu plaza'}</strong><small>{route.path.length} puntos de navegación</small></div></div>}
         {notice && <div className="notice"><span>{notice}</span><button onClick={() => setNotice('')}><X size={14}/></button></div>}
         <div className="detail-actions"><button className="primary-action" onClick={() => requestRoute(selected)} disabled={!selectedSpot || busy}><Navigation size={17}/> Trazar ruta</button><button className="secondary-action" onClick={park} disabled={!selectedSpot || selectedSpot.status !== 'libre' || busy}><Check size={17}/> Estacionar aquí</button></div>
