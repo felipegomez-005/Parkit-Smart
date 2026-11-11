@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CarFront, Check, ChevronDown, CircleHelp, Clock3, Compass, Crosshair, LocateFixed, MapPin, Menu, Navigation, ParkingCircle, Search, Settings2, ShieldCheck, Signal, SlidersHorizontal, Sparkles, X } from 'lucide-react';
 import { api } from './lib/api.js';
 import { connectSocket, subscribe } from './lib/socket.js';
@@ -31,6 +31,14 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [mapZoom, setMapZoom] = useState(1);
 
+  const [parking, setParking] = useState(null);
+  const initialParkingApplied = useRef(false);
+
+  // Plaza donde está estacionado el vehículo: se deriva del vehículo en vivo (socket) y, si no, de /parking.
+  const parkedSpot = vehicle
+    ? (spots.find((spot) => spot.id != null && spot.id === vehicle.parked_spot_id) || (parking?.id != null && parking.id === vehicle.parked_spot_id ? parking : null))
+    : parking;
+
   const selectedSpot = spots.find((spot) => spot.number === selected) || null;
   const freeCount = spots.filter((spot) => spot.status === 'libre').length;
   const occupiedCount = spots.filter((spot) => spot.status === 'ocupado' || spot.status === 'estacionado').length;
@@ -42,6 +50,12 @@ export default function App() {
       if (map?.spots?.length) setSpots(map.spots.map((spot) => ({ ...spot, zone_name: spot.zone_name || map.zones?.find((z) => z.id === spot.zone_id)?.name })));
       if (currentVehicle) setVehicle(currentVehicle);
       setApiReady(true);
+      try {
+        const saved = (await api.getParking())?.spot || null;
+        setParking(saved);
+        if (saved && !initialParkingApplied.current) setSelected(saved.number);
+        initialParkingApplied.current = true;
+      } catch { /* sin plaza guardada */ }
     } catch {
       setApiReady(false);
     }
@@ -141,12 +155,13 @@ export default function App() {
 
       <section className="map-area">
         <div className="map-toolbar"><div className="map-title"><span className="map-title-icon"><MapPin size={16}/></span><div><strong>Mapa del estacionamiento</strong><small>Distribución de plazas · Vista superior</small></div></div><div className="map-tools"><span className="map-live"><i/> EN VIVO</span><button className="map-tool" title="Centrar mapa"><Crosshair size={17}/></button><button className="map-tool" title="Brújula"><Compass size={17}/></button></div></div>
-        <div className="map-canvas-wrap"><ParkingMap spots={spots} selected={selected} route={route} onSelect={requestRoute} zoom={mapZoom}/><div className="map-zoom"><button aria-label="Acercar" onClick={() => setMapZoom((z) => Math.min(1.5, z + 0.1))}>＋</button><button aria-label="Alejar" onClick={() => setMapZoom((z) => Math.max(0.8, z - 0.1))}>−</button></div><div className="map-compass"><Navigation size={18}/><small>N</small></div><div className="map-scale"><span/>20 m</div><div className="map-legend"><span><i className="green-dot"/> Disponible</span><span><i className="red-dot"/> Ocupada</span><span><i className="blue-dot"/> Tu ruta</span></div></div>
+        <div className="map-canvas-wrap"><ParkingMap spots={spots} selected={selected} route={route} onSelect={requestRoute} zoom={mapZoom} vehicle={vehicle} parkedNumber={parkedSpot?.number}/><div className="map-zoom"><button aria-label="Acercar" onClick={() => setMapZoom((z) => Math.min(1.5, z + 0.1))}>＋</button><button aria-label="Alejar" onClick={() => setMapZoom((z) => Math.max(0.8, z - 0.1))}>−</button></div><div className="map-compass"><Navigation size={18}/><small>N</small></div><div className="map-scale"><span/>20 m</div><div className="map-legend"><span><i className="green-dot"/> Disponible</span><span><i className="red-dot"/> Ocupada</span><span><i className="blue-dot"/> Tu ruta</span></div></div>
         <div className="map-footer"><span><Signal size={14}/> Plano interior · Nivel -1</span><span>Actualizado hace unos segundos</span></div>
       </section>
 
       <aside className={`detail-panel ${panelExpanded ? '' : 'collapsed'}`}>
         <button className="panel-handle" onClick={() => setPanelExpanded(!panelExpanded)}><span/><ChevronDown size={15}/></button>
+        {activeTab === 'vehiculo' && <div className="destination-preview"><div className="preview-icon"><CarFront size={23}/></div><div><small>MI VEHÍCULO</small><strong>{parkedSpot ? `Plaza ${parkedSpot.number}` : 'Sin plaza guardada'}</strong><small>{parkedSpot ? (parkedSpot.zone_name || 'Estacionamiento') : 'Estaciona para guardar tu plaza'}</small></div></div>}
         <div className="detail-header"><div><p className="eyebrow">DESTINO SELECCIONADO</p><h2>{selectedSpot?.number || 'Selecciona una plaza'}</h2><p>{selectedSpot?.zone_name || 'Explora el plano para elegir'}</p></div><span className={`big-status ${selectedSpot?.status === 'libre' ? 'free' : 'busy'}`}><i/>{selectedSpot ? statusLabel(selectedSpot.status) : 'Sin selección'}</span></div>
         <div className="destination-preview"><div className="preview-icon"><MapPin size={23}/></div><div><strong>{selectedSpot?.zone_name || 'Estacionamiento ParkIt'}</strong><small>{selectedSpot ? `Plaza ${selectedSpot.number} · Nivel -1` : 'Nivel subterráneo'}</small></div><span className="preview-distance"><Navigation size={14}/>{route?.distance ? `${route.distance.toFixed(0)} m` : '—'}</span></div>
         <div className="route-summary"><div className="route-line"><span className="route-origin"/><div/><span className="route-destination"/></div><div className="route-copy"><div><small>DESDE</small><strong>Entrada principal</strong></div><div><small>HASTA</small><strong>{selectedSpot?.number || '—'}</strong></div></div></div>
@@ -159,7 +174,7 @@ export default function App() {
       </aside>
     </section>
 
-    <nav className="mobile-nav"><button className={activeTab === 'mapa' ? 'active' : ''} onClick={() => setActiveTab('mapa')}><MapPin size={19}/>Mapa</button><button className={activeTab === 'plazas' ? 'active' : ''} onClick={() => { setActiveTab('plazas'); setPanelExpanded(true); }}><ParkingCircle size={19}/>Plazas</button><button className={activeTab === 'vehiculo' ? 'active' : ''} onClick={() => setActiveTab('vehiculo')}><CarFront size={19}/>Vehículo</button></nav>
+    <nav className="mobile-nav"><button className={activeTab === 'mapa' ? 'active' : ''} onClick={() => setActiveTab('mapa')}><MapPin size={19}/>Mapa</button><button className={activeTab === 'plazas' ? 'active' : ''} onClick={() => { setActiveTab('plazas'); setPanelExpanded(true); }}><ParkingCircle size={19}/>Plazas</button><button className={activeTab === 'vehiculo' ? 'active' : ''} onClick={() => { setActiveTab('vehiculo'); setPanelExpanded(true); }}><CarFront size={19}/>Vehículo</button></nav>
     {showSettings && <div className="modal-backdrop" onClick={() => setShowSettings(false)}><div className="settings-modal" onClick={(e) => e.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">PARKIT SMART</p><h3>Configuración</h3></div><button className="icon-button" onClick={() => setShowSettings(false)}><X size={18}/></button></div><div className="setting-line"><div><strong>Conexión con el servidor</strong><small>{apiReady ? 'API disponible' : 'Sin conexión · modo demo'}</small></div><span className={`connection-state ${apiReady ? 'online' : ''}`}>{apiReady ? 'Conectado' : 'Desconectado'}</span></div><div className="setting-line"><div><strong>Actualización en tiempo real</strong><small>Socket.IO</small></div><span className="connection-state">{connected ? 'Activo' : 'Pendiente'}</span></div><button className="secondary-action full" onClick={refresh}><Activity size={16}/> Volver a comprobar conexión</button></div></div>}
   </main>;
 }

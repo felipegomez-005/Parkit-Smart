@@ -7,7 +7,9 @@ const POSITIONS = {
 };
 const free = (status) => status === 'libre';
 
-export default function ParkingMap({ spots = [], selected, route, onSelect, zoom = 1 }) {
+export default function ParkingMap({ spots = [], selected, route, onSelect, zoom = 1, vehicle, parkedNumber }) {
+  const hasVehicle = Number.isFinite(vehicle?.position_x) && Number.isFinite(vehicle?.position_y);
+  const heading = Number.isFinite(vehicle?.orientation) ? vehicle.orientation : 0;
   const routePoints = route?.path?.map((point) => `${point.x},${point.y}`).join(' ');
   const ordered = ['P5', 'P6', 'P3', 'P4', 'P1', 'P2'];
   return <svg className="parking-map" style={{ transform: `scale(${zoom})` }} viewBox="0 0 688 388" role="img" aria-label="Plano interactivo del estacionamiento ParkIt Smart">
@@ -53,11 +55,14 @@ export default function ParkingMap({ spots = [], selected, route, onSelect, zoom
         <text x={p.x} y={y+42} textAnchor="middle" className="spot-label">{number}</text>
         <path d={`M${x+7} ${y+60}h42`} stroke={available ? '#23b96c' : '#e35b63'} strokeWidth="3" strokeLinecap="round"/>
         {isSelected && <circle cx={p.x} cy={y+14} r="13" fill="none" stroke="#2879ed" strokeWidth="1.5" strokeDasharray="3 3"/>}
+        {parkedNumber === number && <g><rect x={x-3} y={y-3} width="62" height="68" rx="7" fill="none" stroke="#f59e0b" strokeWidth="3"/><rect x={p.x-24} y={y+46} width="48" height="12" rx="6" fill="#f59e0b"/><text x={p.x} y={y+55} textAnchor="middle" fill="#fff" fontSize="8" fontWeight="800">TU AUTO</text></g>}
       </g>;
     })}
 
     {/* Ruta calculada desde el backend */}
     {routePoints && <g><polyline points={routePoints} fill="none" stroke="#fff" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round"/><polyline points={routePoints} fill="none" stroke="#2878ed" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/><circle cx={route?.path?.[0]?.x} cy={route?.path?.[0]?.y} r="8" fill="#fff" stroke="#2878ed" strokeWidth="4"/><circle cx={route?.path?.at(-1)?.x} cy={route?.path?.at(-1)?.y} r="8" fill="#2878ed" stroke="#fff" strokeWidth="3"/></g>}
+    {/* Vehículo (posición y orientación en grados; 0° = hacia arriba) */}
+    {hasVehicle && <g transform={`translate(${vehicle.position_x} ${vehicle.position_y}) rotate(${heading})`} filter="url(#pinShadow)" aria-label="Tu vehículo"><circle r="15" fill="#2878ed" opacity=".18"/><rect x="-8" y="-13" width="16" height="26" rx="5" fill="#2878ed" stroke="#fff" strokeWidth="2"/><path d="M0 -18L7 -9H-7Z" fill="#fff" stroke="#2878ed" strokeWidth="1.5" strokeLinejoin="round"/></g>}
     {/* Entrada */}
     <g><path d="M278 380V350H366V380" fill="#dcecff" stroke="#82aee5" strokeWidth="2"/><path d="M322 355l22 0m-7 -7 7 7-7 7" fill="none" stroke="#2778e8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><text x="344" y="343" textAnchor="middle" fill="#3974bd" fontSize="11" fontWeight="800" letterSpacing="1.2">ENTRADA</text></g>
     <g transform="translate(344 253)"><circle r="11" fill="#fff" stroke="#2878ed" strokeWidth="3"/><circle r="4" fill="#2878ed"/><path d="M0 -17V-12M0 12V17M-17 0H-12M12 0H17" stroke="#2878ed" strokeWidth="2" strokeLinecap="round"/></g>
