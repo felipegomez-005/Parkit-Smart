@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS vehicle (
 CREATE TABLE IF NOT EXISTS map_config (
   id           INTEGER PRIMARY KEY CHECK (id = 1),
   name         TEXT NOT NULL DEFAULT 'Parking',
-  image_width  INTEGER,                     -- resolución de la cámara
+  image_width  INTEGER,                     -- tamaño del plano (688×388): espacio de coordenadas de la API
   image_height INTEGER,
   scale        REAL,                        -- p.ej. píxeles por metro
   homography   TEXT,                        -- matriz 3x3 en JSON (corrección de perspectiva)

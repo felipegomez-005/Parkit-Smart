@@ -7,8 +7,15 @@
 
 - **Base URL (desarrollo):** `http://localhost:3000`
 - **Formato:** todo es JSON.
-- **Coordenadas:** `(x, y)` en un plano 2D con unidades arbitrarias. Las define la
-  calibración (el "mundo" del mapa). No hay restricción de rango.
+- **Coordenadas:** todas las coordenadas (plazas, nodos, pilares, luces, vehículo y
+  rutas) están en el espacio del **plano de 688 de ancho por 388 de alto**:
+  - Origen `(0, 0)` arriba a la izquierda; `x` crece hacia la derecha e `y` hacia abajo.
+  - Rango esperado: `0 ≤ x ≤ 688` y `0 ≤ y ≤ 388`.
+  - **Orientación del vehículo:** `0°` apunta hacia arriba y crece en sentido horario
+    (`90°` apunta a la derecha, `180°` abajo, `270°` a la izquierda).
+- **Nota para el script de visión:** la cámara entrega **píxeles**; antes de llamar a
+  `POST /api/vision/vehicle` y `POST /api/vision/spots` hay que convertirlos a estas
+  coordenadas del plano (688×388).
 
 ## Conceptos del modelo
 
@@ -125,25 +132,25 @@ atómica).
     { "name": "Zona C", "description": "Plaza derecha (C1)" }
   ],
   "spots": [
-    { "number": "A1", "zone": "Zona A", "polygon": [[-13, 18], [-7, 18], [-7, 22], [-13, 22]] },
-    { "number": "B1", "zone": "Zona B", "polygon": [[-3, 18], [3, 18], [3, 22], [-3, 22]] },
-    { "number": "C1", "zone": "Zona C", "polygon": [[7, 18], [13, 18], [13, 22], [7, 22]] }
+    { "number": "A1", "zone": "Zona A", "polygon": [[214, 220], [274, 220], [274, 260], [214, 260]] },
+    { "number": "B1", "zone": "Zona B", "polygon": [[314, 220], [374, 220], [374, 260], [314, 260]] },
+    { "number": "C1", "zone": "Zona C", "polygon": [[414, 220], [474, 220], [474, 260], [414, 260]] }
   ],
   "pillars": [
-    { "name": "Pilar izquierdo", "x": -5, "y": 17 },
-    { "name": "Pilar derecho", "x": 10, "y": 17 }
+    { "name": "Pilar izquierdo", "x": 294, "y": 210 },
+    { "name": "Pilar derecho", "x": 444, "y": 210 }
   ],
   "lights": [
-    { "spot": "A1", "pillar": "Pilar izquierdo", "side": "izquierda", "x": -6, "y": 17 },
-    { "spot": "B1", "pillar": "Pilar izquierdo", "side": "derecha", "x": -4, "y": 17 },
-    { "spot": "C1", "pillar": "Pilar derecho", "x": 10, "y": 17 }
+    { "spot": "A1", "pillar": "Pilar izquierdo", "side": "izquierda", "x": 284, "y": 210 },
+    { "spot": "B1", "pillar": "Pilar izquierdo", "side": "derecha", "x": 304, "y": 210 },
+    { "spot": "C1", "pillar": "Pilar derecho", "x": 444, "y": 210 }
   ],
   "nodes": [
-    { "label": "Entrada", "type": "entrada", "x": 0, "y": 0 },
-    { "label": "Cruce central", "type": "cruce", "x": 0, "y": 10 },
-    { "label": "Plaza A1", "type": "plaza", "x": -10, "y": 20, "spot": "A1" },
-    { "label": "Plaza B1", "type": "plaza", "x": 0, "y": 20, "spot": "B1" },
-    { "label": "Plaza C1", "type": "plaza", "x": 10, "y": 20, "spot": "C1" }
+    { "label": "Entrada", "type": "entrada", "x": 344, "y": 40 },
+    { "label": "Cruce central", "type": "cruce", "x": 344, "y": 140 },
+    { "label": "Plaza A1", "type": "plaza", "x": 244, "y": 240, "spot": "A1" },
+    { "label": "Plaza B1", "type": "plaza", "x": 344, "y": 240, "spot": "B1" },
+    { "label": "Plaza C1", "type": "plaza", "x": 444, "y": 240, "spot": "C1" }
   ],
   "edges": [
     { "from": "Entrada", "to": "Cruce central" },
@@ -195,14 +202,14 @@ Devuelve el mapa completo. **Ejemplo** (recortado):
       "number": "A1",
       "label": "Plaza A1",
       "status": "libre",
-      "x": -10,
-      "y": 20,
-      "polygon": [[-13, 18], [-7, 18], [-7, 22], [-13, 22]],
+      "x": 244,
+      "y": 240,
+      "polygon": [[214, 220], [274, 220], [274, 260], [214, 260]],
       "updated_at": "2026-10-07T21:44:04.600Z"
     }
   ],
   "pillars": [
-    { "id": 1, "name": "Pilar izquierdo", "x": -5, "y": 17 }
+    { "id": 1, "name": "Pilar izquierdo", "x": 294, "y": 210 }
   ],
   "lights": [
     {
@@ -210,17 +217,17 @@ Devuelve el mapa completo. **Ejemplo** (recortado):
       "pillar_id": 1,
       "spot_id": 1,
       "side": "izquierda",
-      "x": -6,
-      "y": 17,
+      "x": 284,
+      "y": 210,
       "pillar_name": "Pilar izquierdo",
       "spot_number": "A1"
     }
   ],
   "nodes": [
-    { "id": 1, "label": "Entrada", "type": "entrada", "x": 0, "y": 0, "spot_id": null, "zone_id": null }
+    { "id": 1, "label": "Entrada", "type": "entrada", "x": 344, "y": 40, "spot_id": null, "zone_id": null }
   ],
   "edges": [
-    { "id": 1, "node_a": 1, "node_b": 2, "weight": 10 }
+    { "id": 1, "node_a": 1, "node_b": 2, "weight": 100 }
   ]
 }
 ```
@@ -244,7 +251,7 @@ Devuelve el mapa completo. **Ejemplo** (recortado):
 [
   {
     "id": 1, "zone_id": 1, "number": "A1", "label": "Plaza A1",
-    "status": "libre", "x": -10, "y": 20, "polygon": [[-13,18],[-7,18],[-7,22],[-13,22]],
+    "status": "libre", "x": 244, "y": 240, "polygon": [[214,220],[274,220],[274,260],[214,260]],
     "zone_name": "Zona A", "updated_at": "..."
   }
 ]
@@ -258,13 +265,16 @@ Con filtro: `GET /api/spots?zone=1` devuelve solo las plazas de esa zona.
 {
   "id": 1,
   "name": "Maqueta ParkIt",
-  "image_width": 1920,
-  "image_height": 1080,
+  "image_width": 688,
+  "image_height": 388,
   "scale": null,
   "homography": null,
   "updated_at": "..."
 }
 ```
+
+`image_width` e `image_height` son el tamaño del plano (688×388), el espacio de
+coordenadas del resto de la API; no la resolución de la cámara.
 
 ### PUT /api/config
 
@@ -305,10 +315,10 @@ La cámara (ArUco) envía la posición y orientación del auto. El backend guard
 **emite `vehicle:update`**.
 
 ```json
-{ "x": 2.5, "y": 10.0, "orientation": 90 }
+{ "x": 354, "y": 140, "orientation": 90 }
 ```
 
-- `orientation` en grados. `status` es opcional (`buscando` por defecto; si el vehículo está `estacionado` y no se envía `status`, se conserva `estacionado` y su plaza).
+- `x`, `y` en coordenadas del plano (688×388). `orientation` en grados: `0°` arriba, creciendo en sentido horario (`90°` = derecha). `status` es opcional (`buscando` por defecto; si el vehículo está `estacionado` y no se envía `status`, se conserva `estacionado` y su plaza).
 - Devuelve el estado del vehículo actualizado.
 
 ### GET /api/vehicle
@@ -317,8 +327,8 @@ La cámara (ArUco) envía la posición y orientación del auto. El backend guard
 {
   "id": 1,
   "status": "buscando",
-  "position_x": 2.5,
-  "position_y": 10.0,
+  "position_x": 354,
+  "position_y": 140,
   "orientation": 90,
   "parked_spot_id": null,
   "updated_at": "..."
@@ -342,13 +352,13 @@ Respuesta:
 
 ```json
 {
-  "from": { "id": 1, "label": "Entrada", "type": "entrada", "x": 0, "y": 0 },
-  "to": { "id": 3, "label": "Plaza A1", "type": "plaza", "x": -10, "y": 20 },
-  "distance": 24.14,
+  "from": { "id": 1, "label": "Entrada", "type": "entrada", "x": 344, "y": 40 },
+  "to": { "id": 3, "label": "Plaza A1", "type": "plaza", "x": 244, "y": 240 },
+  "distance": 241.42,
   "path": [
-    { "id": 1, "label": "Entrada", "type": "entrada", "x": 0, "y": 0, "instruction": "inicio" },
-    { "id": 2, "label": "Cruce central", "type": "cruce", "x": 0, "y": 10, "instruction": "izquierda" },
-    { "id": 3, "label": "Plaza A1", "type": "plaza", "x": -10, "y": 20, "instruction": "destino" }
+    { "id": 1, "label": "Entrada", "type": "entrada", "x": 344, "y": 40, "instruction": "inicio" },
+    { "id": 2, "label": "Cruce central", "type": "cruce", "x": 344, "y": 140, "instruction": "izquierda" },
+    { "id": 3, "label": "Plaza A1", "type": "plaza", "x": 244, "y": 240, "instruction": "destino" }
   ]
 }
 ```
@@ -387,9 +397,9 @@ Respuesta:
 
 ```json
 {
-  "from": { "id": 1, "label": "Entrada", "type": "entrada", "x": 0, "y": 0 },
+  "from": { "id": 1, "label": "Entrada", "type": "entrada", "x": 344, "y": 40 },
   "spot": { "number": "B1", "status": "libre" },
-  "distance": 20,
+  "distance": 200,
   "path": [ "...nodos en orden..." ]
 }
 ```
