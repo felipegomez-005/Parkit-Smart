@@ -88,6 +88,21 @@ function resolveStart(graph, ref) {
   return null;
 }
 
+// Nodo del grafo más cercano (distancia euclidiana) a un punto (x, y).
+// Devuelve el nodo o null si el grafo está vacío.
+export function nearestNode(x, y) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const n of buildGraph().nodes.values()) {
+    const d = Math.hypot(n.x - x, n.y - y);
+    if (d < bestDist) {
+      bestDist = d;
+      best = n;
+    }
+  }
+  return best;
+}
+
 // Ruta más corta entre dos nodos (por id o por label).
 const TURN_THRESHOLD = Math.PI / 6; // 30 grados
 
