@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CarFront, Check, ChevronDown, CircleHelp, Clock3, Compass, Crosshair, LocateFixed, MapPin, Menu, Navigation, ParkingCircle, Search, Settings2, ShieldCheck, Signal, SlidersHorizontal, Sparkles, X } from 'lucide-react';
-import { api } from './lib/api.js';
-import { connectSocket, subscribe } from './lib/socket.js';
+import { Activity, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CarFront, Check, ChevronDown, CircleHelp, Clock3, Compass, Crosshair, LocateFixed, LogOut, MapPin, Menu, Navigation, ParkingCircle, Search, Settings2, ShieldCheck, Signal, SlidersHorizontal, Sparkles, X } from 'lucide-react';
+import { api, getAuthToken, loadStoredToken, logout, setAuthToken, storeToken } from './lib/api.js';
+import { connectSocket, disconnectSocket, subscribe } from './lib/socket.js';
 import ParkingMap from './components/ParkingMap.jsx';
+import AuthScreen from './components/AuthScreen.jsx';
 
 const INITIAL_SPOTS = [
   { number: 'P1', zone_name: 'Sector A', status: 'libre', x: 510, y: 328 },
@@ -15,7 +16,47 @@ const INITIAL_SPOTS = [
 
 const statusLabel = (status) => status === 'libre' ? 'Disponible' : status === 'ocupado' ? 'Ocupada' : status || 'Sin datos';
 
+const AUTH_ERROR = 'Token inválido o ausente';
+
+// Iniciales para el avatar (máx. 2); "PS" en modo demostración.
+const initialsOf = (name) => (name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || 'PS';
+
+// Controla la sesión: restaura el token guardado, muestra el login o entra a la app.
 export default function App() {
+  const [session, setSession] = useState({ status: 'checking', user: null, error: '' });
+
+  useEffect(() => {
+    const token = loadStoredToken();
+    if (!token) { setSession({ status: 'login', user: null, error: '' }); return; }
+    setAuthToken(token);
+    api.me()
+      .then((r) => setSession({ status: 'app', user: r.user, error: '' }))
+      .catch((err) => {
+        if (err.status === 401) { logout(); setSession({ status: 'login', user: null, error: '' }); }
+        else setSession({ status: 'app', user: null, error: '' }); // sin servidor: modo demostración
+      });
+  }, []);
+
+  const handleAuth = (result) => {
+    storeToken(result.token);
+    disconnectSocket(); // la app se monta después y reconecta con el token nuevo
+    setSession({ status: 'app', user: result.user, error: '' });
+  };
+
+  const handleLogout = (error = '') => {
+    logout();
+    disconnectSocket();
+    setSession({ status: 'login', user: null, error });
+  };
+
+  if (session.status === 'checking') return null;
+  if (session.status === 'login') {
+    return <AuthScreen onAuth={handleAuth} initialError={session.error} onDemo={() => setSession({ status: 'app', user: null, error: '' })}/>;
+  }
+  return <ParkingApp user={session.user} onLogout={handleLogout}/>;
+}
+
+function ParkingApp({ user, onLogout }) {
   const [spots, setSpots] = useState(INITIAL_SPOTS);
   const [selected, setSelected] = useState('P1');
   const [route, setRoute] = useState(null);
@@ -64,11 +105,14 @@ export default function App() {
 
   useEffect(() => {
     refresh();
+    if (!getAuthToken()) return undefined; // modo demostración: sin sesión no hay socket
     const socket = connectSocket();
     const onConnect = () => setConnected(true);
     const onDisconnect = () => setConnected(false);
+    const onConnectError = (err) => { if (err?.message === AUTH_ERROR) onLogout('Tu sesión expiró. Inicia sesión de nuevo.'); };
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
+    socket.on('connect_error', onConnectError);
     setConnected(socket.connected);
     const off = subscribe({
       onMap: (map) => { if (map?.spots) setSpots(map.spots); },
@@ -76,8 +120,8 @@ export default function App() {
       onSpotUpdate: (updated) => setSpots((current) => current.map((spot) => spot.id === updated.id || spot.number === updated.number ? { ...spot, ...updated } : spot)),
       onVehicleUpdate: setVehicle,
     });
-    return () => { off(); socket.off('connect', onConnect); socket.off('disconnect', onDisconnect); };
-  }, [refresh]);
+    return () => { off(); socket.off('connect', onConnect); socket.off('disconnect', onDisconnect); socket.off('connect_error', onConnectError); };
+  }, [refresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Origen de la ruta: la posición real del vehículo si la tiene; si no (o si el backend responde 400), "Entrada".
   const vehicleHasPosition = vehicle?.position_x != null && vehicle?.position_y != null;
@@ -169,7 +213,7 @@ export default function App() {
     <header className="topbar">
       <div className="brand"><div className="brand-mark"><ParkingCircle size={22}/></div><div><strong>ParkIt<span>Smart</span></strong><small>ESTACIONAMIENTO INTELIGENTE</small></div></div>
       <div className="topbar-center"><span className="live-dot"/><span>{apiReady ? 'Sistema conectado' : 'Modo demostración'}</span><i/> <span className="garage-label">Nivel -1 · Subterráneo</span></div>
-      <div className="top-actions"><button className="icon-button" aria-label="Ayuda"><CircleHelp size={19}/></button><button className="icon-button" aria-label="Configuración" onClick={() => setShowSettings(true)}><Settings2 size={19}/></button><div className="avatar">PS</div></div>
+      <div className="top-actions"><button className="icon-button" aria-label="Ayuda"><CircleHelp size={19}/></button><button className="icon-button" aria-label="Configuración" onClick={() => setShowSettings(true)}><Settings2 size={19}/></button><div className="avatar" title={user?.name || 'Modo demostración'}>{initialsOf(user?.name)}</div></div>
     </header>
 
     <section className="workspace">
@@ -210,6 +254,6 @@ export default function App() {
     </section>
 
     <nav className="mobile-nav"><button className={activeTab === 'mapa' ? 'active' : ''} onClick={() => setActiveTab('mapa')}><MapPin size={19}/>Mapa</button><button className={activeTab === 'plazas' ? 'active' : ''} onClick={() => { setActiveTab('plazas'); setPanelExpanded(true); }}><ParkingCircle size={19}/>Plazas</button><button className={activeTab === 'vehiculo' ? 'active' : ''} onClick={() => { setActiveTab('vehiculo'); setPanelExpanded(true); }}><CarFront size={19}/>Vehículo</button></nav>
-    {showSettings && <div className="modal-backdrop" onClick={() => setShowSettings(false)}><div className="settings-modal" onClick={(e) => e.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">PARKIT SMART</p><h3>Configuración</h3></div><button className="icon-button" onClick={() => setShowSettings(false)}><X size={18}/></button></div><div className="setting-line"><div><strong>Conexión con el servidor</strong><small>{apiReady ? 'API disponible' : 'Sin conexión · modo demo'}</small></div><span className={`connection-state ${apiReady ? 'online' : ''}`}>{apiReady ? 'Conectado' : 'Desconectado'}</span></div><div className="setting-line"><div><strong>Actualización en tiempo real</strong><small>Socket.IO</small></div><span className="connection-state">{connected ? 'Activo' : 'Pendiente'}</span></div><button className="secondary-action full" onClick={refresh}><Activity size={16}/> Volver a comprobar conexión</button></div></div>}
+    {showSettings && <div className="modal-backdrop" onClick={() => setShowSettings(false)}><div className="settings-modal" onClick={(e) => e.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">PARKIT SMART</p><h3>Configuración</h3></div><button className="icon-button" onClick={() => setShowSettings(false)}><X size={18}/></button></div><div className="setting-line"><div><strong>Conexión con el servidor</strong><small>{apiReady ? 'API disponible' : 'Sin conexión · modo demo'}</small></div><span className={`connection-state ${apiReady ? 'online' : ''}`}>{apiReady ? 'Conectado' : 'Desconectado'}</span></div><div className="setting-line"><div><strong>Actualización en tiempo real</strong><small>Socket.IO</small></div><span className="connection-state">{connected ? 'Activo' : 'Pendiente'}</span></div><button className="secondary-action full" onClick={refresh}><Activity size={16}/> Volver a comprobar conexión</button><button className="secondary-action full" onClick={() => onLogout()}><LogOut size={16}/> Cerrar sesión{user?.name ? ` (${user.name})` : ''}</button></div></div>}
   </main>;
 }

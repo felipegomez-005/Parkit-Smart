@@ -5,6 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import { io } from 'socket.io-client';
+import { getAuthToken } from './api.js';
 
 // En producción se usa la misma URL del backend (''). En desarrollo se define
 // VITE_API_URL=http://localhost:3000 en .env.
@@ -14,7 +15,8 @@ let socket = null;
 
 export function connectSocket() {
   if (socket) return socket;
-  socket = io(BASE_URL, { transports: ['websocket'] });
+  // El backend exige un JWT válido en el handshake.
+  socket = io(BASE_URL, { transports: ['websocket'], auth: { token: getAuthToken() } });
   return socket;
 }
 

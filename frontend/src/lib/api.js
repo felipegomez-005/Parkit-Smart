@@ -18,8 +18,20 @@ export function getAuthToken() {
   return authToken;
 }
 
+// Persistencia del token (puede fallar en modo privado o con el almacenamiento bloqueado).
+const TOKEN_KEY = 'parkit_token';
+
+export function loadStoredToken() {
+  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
+}
+
+export function storeToken(token) {
+  try { token ? localStorage.setItem(TOKEN_KEY, token) : localStorage.removeItem(TOKEN_KEY); } catch { /* sin almacenamiento */ }
+}
+
 export function logout() {
   authToken = null;
+  storeToken(null);
 }
 
 async function request(method, path, body) {

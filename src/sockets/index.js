@@ -1,4 +1,5 @@
 import { getMap, getVehicle } from '../db/repository.js';
+import { getUserFromToken } from '../services/auth.service.js';
 
 let io = null;
 
@@ -6,6 +7,17 @@ let io = null;
 // para que los servicios emitan eventos en tiempo real a todos los clientes.
 export function initSocket(socketServer) {
   io = socketServer;
+
+  // Exige un JWT válido en `handshake.auth.token`.
+  io.use((socket, next) => {
+    const token = socket.handshake.auth?.token;
+    const user = token ? getUserFromToken(token) : null;
+    if (!user) {
+      return next(new Error('Token inválido o ausente'));
+    }
+    socket.data.user = user;
+    next();
+  });
 
   io.on('connection', (socket) => {
     console.log(`[Socket.IO] Cliente conectado: ${socket.id}`);
