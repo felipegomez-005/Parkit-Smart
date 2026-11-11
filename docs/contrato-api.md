@@ -308,7 +308,7 @@ La cámara (ArUco) envía la posición y orientación del auto. El backend guard
 { "x": 2.5, "y": 10.0, "orientation": 90 }
 ```
 
-- `orientation` en grados. `status` es opcional (`buscando` por defecto).
+- `orientation` en grados. `status` es opcional (`buscando` por defecto; si el vehículo está `estacionado` y no se envía `status`, se conserva `estacionado` y su plaza).
 - Devuelve el estado del vehículo actualizado.
 
 ### GET /api/vehicle
@@ -392,6 +392,9 @@ en producción la ocupación la detecta la cámara).
 
 - Devuelve `{ vehicle, spot }`.
 - Si la plaza no existe → `404`.
+- Si la plaza ya está `ocupado` y no es la que este mismo vehículo ya tenía guardada → `409`.
+- Si el vehículo tenía otra plaza guardada, esa se libera (`libre`) y se emite `spot:update`.
+- Estacionar de nuevo en la misma plaza no da error.
 
 ### GET /api/vehicle/parking — "Dónde está mi vehículo"
 

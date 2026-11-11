@@ -82,7 +82,13 @@ export function ingestSpotStates(updates) {
 
 // Actualiza la posición/orientación del vehículo (ArUco). Emite "vehicle:update".
 export function setVehicleState(payload) {
-  const status = VALID_VEHICLE_STATUS.has(payload.status) ? payload.status : 'buscando';
+  let status;
+  if (VALID_VEHICLE_STATUS.has(payload.status)) {
+    status = payload.status;
+  } else {
+    // Sin status explícito: si ya está estacionado, se conserva (y su parked_spot_id).
+    status = getVehicle().status === 'estacionado' ? 'estacionado' : 'buscando';
+  }
   const x = Number(payload.x);
   const y = Number(payload.y);
   const orientation = Number(payload.orientation);
@@ -110,7 +116,23 @@ export function parkVehicleAtSpot(number) {
     err.status = 404;
     throw err;
   }
+  const previousSpotId = getVehicle().parked_spot_id ?? null;
+
+  if (spot.status === 'ocupado' && previousSpotId !== spot.id) {
+    const err = new Error(`La plaza "${number}" ya está ocupada.`);
+    err.status = 409;
+    throw err;
+  }
+
   const vehicle = parkVehicle(spot.id);
+
+  // Si tenía otra plaza guardada, se libera.
+  if (previousSpotId !== null && previousSpotId !== spot.id) {
+    const previous = getSpotById(previousSpotId);
+    if (previous && previous.status !== 'libre') {
+      broadcast('spot:update', updateSpotStatus(previousSpotId, 'libre'));
+    }
+  }
 
   // En producción la ocupación la detecta la cámara; aquí se marca para la demo.
   if (spot.status !== 'ocupado') {
