@@ -419,7 +419,11 @@ en producción la ocupación la detecta la cámara).
 
 - Devuelve `{ vehicle, spot }`.
 - Si la plaza no existe → `404`.
-- Si la plaza ya está `ocupado` y no es la que este mismo vehículo ya tenía guardada → `409`.
+- Si la plaza ya está `ocupado` y no es la que este mismo vehículo ya tenía guardada, se decide según la posición del vehículo (la cámara o un sensor pudo marcarla ocupada porque el auto del usuario ya está ahí):
+  - vehículo **sin posición conocida** (`position_x`/`position_y` nulos) → se acepta;
+  - vehículo **dentro de la plaza** (rectángulo envolvente del `polygon`, ampliado 12 unidades por cada lado) → se acepta;
+  - vehículo **fuera** de esa zona → `409` (`La plaza "X" ya está ocupada.`).
+- Si la plaza está `libre`, o es la que este vehículo ya tenía guardada, se acepta como siempre.
 - Si el vehículo tenía otra plaza guardada, esa se libera (`libre`) y se emite `spot:update`.
 - Estacionar de nuevo en la misma plaza no da error.
 
