@@ -108,6 +108,26 @@ export function getVehicleState() {
   return getVehicle();
 }
 
+// Margen (en unidades del plano) alrededor del rectángulo envolvente de la plaza.
+const PARK_MARGIN = 12;
+
+// Una plaza "ocupado" ajena igual se acepta si el ocupante probable es este vehículo:
+// no tiene posición conocida, o su posición cae dentro de la plaza (con margen).
+function vehicleCanTakeOccupiedSpot(vehicle, spot) {
+  const { position_x: x, position_y: y } = vehicle;
+  if (x == null || y == null) return true;
+  const polygon = Array.isArray(spot.polygon) ? spot.polygon : [];
+  if (polygon.length === 0) return false;
+  const xs = polygon.map((p) => p[0]);
+  const ys = polygon.map((p) => p[1]);
+  return (
+    x >= Math.min(...xs) - PARK_MARGIN &&
+    x <= Math.max(...xs) + PARK_MARGIN &&
+    y >= Math.min(...ys) - PARK_MARGIN &&
+    y <= Math.max(...ys) + PARK_MARGIN
+  );
+}
+
 // Guarda la plaza donde estacionó el vehículo (y la marca ocupada para la demo).
 export function parkVehicleAtSpot(number) {
   const spot = getSpotByNumber(number);
@@ -116,9 +136,14 @@ export function parkVehicleAtSpot(number) {
     err.status = 404;
     throw err;
   }
-  const previousSpotId = getVehicle().parked_spot_id ?? null;
+  const currentVehicle = getVehicle();
+  const previousSpotId = currentVehicle.parked_spot_id ?? null;
 
-  if (spot.status === 'ocupado' && previousSpotId !== spot.id) {
+  if (
+    spot.status === 'ocupado' &&
+    previousSpotId !== spot.id &&
+    !vehicleCanTakeOccupiedSpot(currentVehicle, spot)
+  ) {
     const err = new Error(`La plaza "${number}" ya está ocupada.`);
     err.status = 409;
     throw err;
