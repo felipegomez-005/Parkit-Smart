@@ -16,13 +16,26 @@ export function createApp() {
   // Servir el frontend compilado (producción). En desarrollo se usa Vite aparte.
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const distDir = path.resolve(__dirname, '..', 'frontend', 'dist');
-  app.use(express.static(distDir));
+  // sw.js e index.html siempre se revalidan; los archivos con hash de /assets se cachean un año.
+  app.use(
+    express.static(distDir, {
+      setHeaders(res, filePath) {
+        const name = path.basename(filePath);
+        if (name === 'sw.js' || name === 'index.html') {
+          res.setHeader('Cache-Control', 'no-cache');
+        } else if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+      },
+    })
+  );
 
   // Fallback SPA: cualquier GET que no sea de la API devuelve index.html.
   app.use((req, res, next) => {
-    if (req.method === 'GET' && !req.path.startsWith('/api/')) {
+    if (req.method === 'GET' && !req.path.startsWith('/api/') && !req.path.startsWith('/socket.io')) {
       const indexFile = path.join(distDir, 'index.html');
       if (existsSync(indexFile)) {
+        res.setHeader('Cache-Control', 'no-cache');
         return res.sendFile(indexFile);
       }
     }
