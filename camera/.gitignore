@@ -1,0 +1,7 @@
+__pycache__/
+.venv/
+/rois.json
+/state.json
+/state.json.tmp
+/calibracion.jpg
+/markers/
