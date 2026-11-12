@@ -1,0 +1,22 @@
+{
+  "camera_source": 0,
+  "spot_ids": ["P1", "P2"],
+  "frame_width": 1280,
+  "frame_height": 720,
+  "rois_file": "rois.json",
+  "aruco_dictionary": "DICT_4X4_50",
+  "color": {
+    "green": {"lower": [40, 70, 70], "upper": [85, 255, 255]},
+    "red_low": {"lower": [0, 70, 70], "upper": [10, 255, 255]},
+    "red_high": {"lower": [170, 70, 70], "upper": [180, 255, 255]},
+    "min_ratio": 0.25
+  },
+  "stability_frames": 5,
+  "interval_seconds": 0.5,
+  "state_file": "state.json",
+  "backend": {
+    "enabled": false,
+    "url": "https://parkitsmartudp.duckdns.org/api/vision/spots",
+    "heartbeat_seconds": 5
+  }
+}
