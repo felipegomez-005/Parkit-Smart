@@ -111,7 +111,7 @@ cd Parkit-Smart
 git pull
 npm install
 cd frontend && npm install && npm run build && cd ..
-npm run seed          # solo si se quiere reiniciar el estado
+npm run seed          # necesario si cambió el plano/grafo (src/db/seed.js); reinicia plazas y vehículo
 pm2 restart parkit
 ```
 
