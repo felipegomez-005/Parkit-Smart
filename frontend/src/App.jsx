@@ -123,6 +123,32 @@ function ParkingApp({ user, onLogout }) {
     return () => { off(); socket.off('connect', onConnect); socket.off('disconnect', onDisconnect); socket.off('connect_error', onConnectError); };
   }, [refresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!getAuthToken()) return undefined;
+    let active = true;
+    let timer;
+    async function syncSpots() {
+      try {
+        const latest = await api.getSpots();
+        if (!active) return;
+        const statuses = new Map(latest.map(({ number, status }) => [number, status]));
+        setSpots((current) => current.map((spot) => {
+          const status = statuses.get(spot.number);
+          return status && status !== spot.status ? { ...spot, status } : spot;
+        }));
+      } catch {
+        // Se vuelve a intentar en la próxima consulta.
+      } finally {
+        if (active) timer = window.setTimeout(syncSpots, 3000);
+      }
+    }
+    timer = window.setTimeout(syncSpots, 3000);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, []);
+
   // Origen de la ruta: la posición real del vehículo si la tiene; si no (o si el backend responde 400), "Entrada".
   const vehicleHasPosition = vehicle?.position_x != null && vehicle?.position_y != null;
   const originLabel = (routeFrom ?? (vehicleHasPosition ? 'vehicle' : 'Entrada')) === 'vehicle' ? 'Tu vehículo' : 'Entrada principal';
