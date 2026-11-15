@@ -98,6 +98,13 @@ function ParkingApp({ user, onLogout }) {
     setRoute(null);
   }, [parkedKey]);
 
+  // Los avisos se cierran solos a los 5 s (y siguen pudiéndose cerrar a mano con la X).
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = window.setTimeout(() => setNotice(''), 5000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
   const selectedSpot = spots.find((spot) => spot.number === selected) || null;
   const freeCount = spots.filter((spot) => spot.status === 'libre').length;
   const occupiedCount = spots.filter((spot) => spot.status === 'ocupado' || spot.status === 'estacionado').length;
