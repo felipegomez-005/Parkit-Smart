@@ -105,9 +105,13 @@ function ParkingApp({ user, onLogout }) {
 
   useEffect(() => {
     refresh();
-    if (!getAuthToken()) return undefined; // modo demostración: sin sesión no hay socket
+    // Al volver a la pestaña se resincroniza todo (también en modo prueba, sin socket).
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    if (!getAuthToken()) return () => document.removeEventListener('visibilitychange', onVisible); // modo prueba: sin sesión no hay socket
     const socket = connectSocket();
-    const onConnect = () => setConnected(true);
+    // Al conectar o reconectar se hace un refresh() completo (se pudieron perder eventos).
+    const onConnect = () => { setConnected(true); refresh(); };
     const onDisconnect = () => setConnected(false);
     const onConnectError = (err) => { if (err?.message === AUTH_ERROR) onLogout('Tu sesión expiró. Inicia sesión de nuevo.'); };
     socket.on('connect', onConnect);
@@ -120,34 +124,42 @@ function ParkingApp({ user, onLogout }) {
       onSpotUpdate: (updated) => setSpots((current) => current.map((spot) => spot.id === updated.id || spot.number === updated.number ? { ...spot, ...updated } : spot)),
       onVehicleUpdate: setVehicle,
     });
-    return () => { off(); socket.off('connect', onConnect); socket.off('disconnect', onDisconnect); socket.off('connect_error', onConnectError); };
+    return () => { document.removeEventListener('visibilitychange', onVisible); off(); socket.off('connect', onConnect); socket.off('disconnect', onDisconnect); socket.off('connect_error', onConnectError); };
   }, [refresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Respaldo por API: solo mientras el socket NO está conectado (modo prueba, token inválido o
+  // desconexión), se consultan plazas y vehículo cada 3 s. Con el socket conectado no hay polling.
   useEffect(() => {
-    if (!getAuthToken()) return undefined;
+    if (connected) return undefined;
     let active = true;
     let timer;
-    async function syncSpots() {
+    let needsRefresh = false; // tras un fallo, al recuperar el servidor se hace un refresh() completo
+    async function poll() {
       try {
-        const latest = await api.getSpots();
+        const [latest, currentVehicle] = await Promise.all([api.getSpots(), api.getVehicle()]);
         if (!active) return;
-        const statuses = new Map(latest.map(({ number, status }) => [number, status]));
-        setSpots((current) => current.map((spot) => {
-          const status = statuses.get(spot.number);
-          return status && status !== spot.status ? { ...spot, status } : spot;
-        }));
+        if (needsRefresh) { needsRefresh = false; refresh(); }
+        else {
+          setApiReady(true);
+          const statuses = new Map(latest.map(({ number, status }) => [number, status]));
+          setSpots((current) => current.map((spot) => {
+            const status = statuses.get(spot.number);
+            return status && status !== spot.status ? { ...spot, status } : spot;
+          }));
+          if (currentVehicle) setVehicle(currentVehicle);
+        }
       } catch {
-        // Se vuelve a intentar en la próxima consulta.
+        if (active) { needsRefresh = true; setApiReady(false); }
       } finally {
-        if (active) timer = window.setTimeout(syncSpots, 3000);
+        if (active) timer = window.setTimeout(poll, 3000);
       }
     }
-    timer = window.setTimeout(syncSpots, 3000);
+    timer = window.setTimeout(poll, 3000);
     return () => {
       active = false;
       window.clearTimeout(timer);
     };
-  }, []);
+  }, [connected, refresh]);
 
   // Origen de la ruta: la posición real del vehículo si la tiene; si no (o si el backend responde 400), "Entrada".
   const vehicleHasPosition = vehicle?.position_x != null && vehicle?.position_y != null;
