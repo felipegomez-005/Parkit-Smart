@@ -357,7 +357,7 @@ Respuesta:
   "distance": 241.42,
   "path": [
     { "id": 1, "label": "Entrada", "type": "entrada", "x": 344, "y": 40, "instruction": "inicio" },
-    { "id": 2, "label": "Cruce central", "type": "cruce", "x": 344, "y": 140, "instruction": "izquierda" },
+    { "id": 2, "label": "Cruce central", "type": "cruce", "x": 344, "y": 140, "instruction": "derecha" },
     { "id": 3, "label": "Plaza A1", "type": "plaza", "x": 244, "y": 240, "instruction": "destino" }
   ]
 }

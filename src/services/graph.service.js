@@ -120,14 +120,16 @@ function addInstructions(path) {
     const ox = next.x - node.x;
     const oy = next.y - node.y;
 
-    const cross = ix * oy - iy * ox; // > 0 = giro a la izquierda (antihorario)
+    // El plano es un SVG: el eje Y crece hacia ABAJO. Con ese eje, cross > 0 es un giro
+    // en sentido horario en pantalla, es decir, a la derecha (y cross < 0, a la izquierda).
+    const cross = ix * oy - iy * ox;
     const dot = ix * ox + iy * oy;
     const angle = Math.atan2(cross, dot);
 
     let instruction;
     if (Math.abs(angle) < TURN_THRESHOLD) instruction = 'recto';
-    else if (angle > 0) instruction = 'izquierda';
-    else instruction = 'derecha';
+    else if (angle > 0) instruction = 'derecha';
+    else instruction = 'izquierda';
 
     return { ...node, instruction };
   });
