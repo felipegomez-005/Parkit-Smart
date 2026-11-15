@@ -88,6 +88,16 @@ function ParkingApp({ user, onLogout }) {
     ? (spots.find((spot) => spot.id != null && spot.id === vehicle.parked_spot_id) || (parking?.id != null && parking.id === vehicle.parked_spot_id ? parking : null))
     : parking;
 
+  // Si la plaza guardada cambia (se estaciona en otra o se retira el auto), la ruta anterior
+  // ya no corresponde: se quita del mapa en vez de dejarla congelada.
+  const parkedKey = parkedSpot?.number ?? null;
+  const lastParkedKey = useRef(parkedKey);
+  useEffect(() => {
+    if (lastParkedKey.current === parkedKey) return;
+    lastParkedKey.current = parkedKey;
+    setRoute(null);
+  }, [parkedKey]);
+
   const selectedSpot = spots.find((spot) => spot.number === selected) || null;
   const freeCount = spots.filter((spot) => spot.status === 'libre').length;
   const occupiedCount = spots.filter((spot) => spot.status === 'ocupado' || spot.status === 'estacionado').length;
