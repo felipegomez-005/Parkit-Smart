@@ -357,7 +357,7 @@ Respuesta:
   "distance": 241.42,
   "path": [
     { "id": 1, "label": "Entrada", "type": "entrada", "x": 344, "y": 40, "instruction": "inicio" },
-    { "id": 2, "label": "Cruce central", "type": "cruce", "x": 344, "y": 140, "instruction": "izquierda" },
+    { "id": 2, "label": "Cruce central", "type": "cruce", "x": 344, "y": 140, "instruction": "derecha" },
     { "id": 3, "label": "Plaza A1", "type": "plaza", "x": 244, "y": 240, "instruction": "destino" }
   ]
 }
@@ -368,6 +368,13 @@ Respuesta:
 - Cada nodo del `path` incluye `instruction`: `inicio`, `recto`, `izquierda`,
   `derecha` o `destino`. Sirve para mostrar las indicaciones de giro.
 - Si un nodo no existe o no hay ruta → `404`.
+- **Errores con `code`:** las respuestas de error de `/api/route` y `/api/route/free-spot`
+  mantienen `{ "error": "mensaje" }` y añaden `"code"` para distinguir la causa sin
+  depender del texto. Códigos: `NODE_NOT_FOUND` (404, el nodo no existe),
+  `NO_ROUTE` (404, no hay camino entre los nodos), `NO_PARKED_SPOT` (404, `to=parked`
+  sin plaza guardada), `VEHICLE_NO_POSITION` (400, `from=vehicle` sin posición),
+  `NO_NODES` (404, grafo vacío) y `NO_FREE_SPOTS` (404, solo en `free-spot`).
+  Un error sin causa conocida no incluye `code`.
 - Si `from` no viene o está vacío, se usa `"Entrada"` por defecto.
 - **Origen desde el vehículo:** `"from": "vehicle"` usa la posición actual del
   vehículo (`position_x`, `position_y`), la lleva al nodo del grafo más cercano
@@ -377,7 +384,7 @@ Respuesta:
   vehículo (la misma de `GET /api/vehicle/parking`), toma su nodo `Plaza X` como
   destino y calcula la ruta desde `from` (por defecto `Entrada`). El `to` de la
   respuesta es ese nodo. Si no hay plaza guardada → `404` con
-  `{ "error": "No hay una plaza guardada para el vehículo; no se puede usar to=parked." }`.
+  `{ "error": "No hay una plaza guardada para el vehículo; no se puede usar to=parked.", "code": "NO_PARKED_SPOT" }`.
   Se puede combinar con `"from": "vehicle"`. Cualquier otro valor de `to` funciona igual que antes.
 
 ```json
@@ -404,7 +411,7 @@ Respuesta:
 }
 ```
 
-- Si no hay plazas libres → `404`.
+- Si no hay plazas libres → `404` con `"code": "NO_FREE_SPOTS"`.
 - `"from": "vehicle"` funciona igual que en `/api/route`: parte desde el nodo más
   cercano a la posición actual del vehículo; sin posición → `400`.
 

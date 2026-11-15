@@ -16,6 +16,13 @@ const INITIAL_SPOTS = [
 
 const statusLabel = (status) => status === 'libre' ? 'Disponible' : status === 'ocupado' ? 'Ocupada' : status || 'Sin datos';
 
+// Mensajes de "Volver a mi vehículo" según el `code` que devuelve POST /api/route.
+const RETURN_ERRORS = {
+  NO_PARKED_SPOT: 'No hay una plaza guardada para tu vehículo.',
+  NODE_NOT_FOUND: 'No se encontró en el plano la entrada o la plaza de tu vehículo.',
+  NO_ROUTE: 'No hay un camino entre la entrada y la plaza de tu vehículo.',
+};
+
 const AUTH_ERROR = 'Token inválido o ausente';
 
 // Iniciales para el avatar (máx. 2); "PS" en modo demostración.
@@ -81,6 +88,23 @@ function ParkingApp({ user, onLogout }) {
     ? (spots.find((spot) => spot.id != null && spot.id === vehicle.parked_spot_id) || (parking?.id != null && parking.id === vehicle.parked_spot_id ? parking : null))
     : parking;
 
+  // Si la plaza guardada cambia (se estaciona en otra o se retira el auto), la ruta anterior
+  // ya no corresponde: se quita del mapa en vez de dejarla congelada.
+  const parkedKey = parkedSpot?.number ?? null;
+  const lastParkedKey = useRef(parkedKey);
+  useEffect(() => {
+    if (lastParkedKey.current === parkedKey) return;
+    lastParkedKey.current = parkedKey;
+    setRoute(null);
+  }, [parkedKey]);
+
+  // Los avisos se cierran solos a los 5 s (y siguen pudiéndose cerrar a mano con la X).
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = window.setTimeout(() => setNotice(''), 5000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
   const selectedSpot = spots.find((spot) => spot.number === selected) || null;
   const freeCount = spots.filter((spot) => spot.status === 'libre').length;
   const occupiedCount = spots.filter((spot) => spot.status === 'ocupado' || spot.status === 'estacionado').length;
@@ -105,9 +129,13 @@ function ParkingApp({ user, onLogout }) {
 
   useEffect(() => {
     refresh();
-    if (!getAuthToken()) return undefined; // modo demostración: sin sesión no hay socket
+    // Al volver a la pestaña se resincroniza todo (también en modo prueba, sin socket).
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    if (!getAuthToken()) return () => document.removeEventListener('visibilitychange', onVisible); // modo prueba: sin sesión no hay socket
     const socket = connectSocket();
-    const onConnect = () => setConnected(true);
+    // Al conectar o reconectar se hace un refresh() completo (se pudieron perder eventos).
+    const onConnect = () => { setConnected(true); refresh(); };
     const onDisconnect = () => setConnected(false);
     const onConnectError = (err) => { if (err?.message === AUTH_ERROR) onLogout('Tu sesión expiró. Inicia sesión de nuevo.'); };
     socket.on('connect', onConnect);
@@ -120,34 +148,42 @@ function ParkingApp({ user, onLogout }) {
       onSpotUpdate: (updated) => setSpots((current) => current.map((spot) => spot.id === updated.id || spot.number === updated.number ? { ...spot, ...updated } : spot)),
       onVehicleUpdate: setVehicle,
     });
-    return () => { off(); socket.off('connect', onConnect); socket.off('disconnect', onDisconnect); socket.off('connect_error', onConnectError); };
+    return () => { document.removeEventListener('visibilitychange', onVisible); off(); socket.off('connect', onConnect); socket.off('disconnect', onDisconnect); socket.off('connect_error', onConnectError); };
   }, [refresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Respaldo por API: solo mientras el socket NO está conectado (modo prueba, token inválido o
+  // desconexión), se consultan plazas y vehículo cada 3 s. Con el socket conectado no hay polling.
   useEffect(() => {
-    if (!getAuthToken()) return undefined;
+    if (connected) return undefined;
     let active = true;
     let timer;
-    async function syncSpots() {
+    let needsRefresh = false; // tras un fallo, al recuperar el servidor se hace un refresh() completo
+    async function poll() {
       try {
-        const latest = await api.getSpots();
+        const [latest, currentVehicle] = await Promise.all([api.getSpots(), api.getVehicle()]);
         if (!active) return;
-        const statuses = new Map(latest.map(({ number, status }) => [number, status]));
-        setSpots((current) => current.map((spot) => {
-          const status = statuses.get(spot.number);
-          return status && status !== spot.status ? { ...spot, status } : spot;
-        }));
+        if (needsRefresh) { needsRefresh = false; refresh(); }
+        else {
+          setApiReady(true);
+          const statuses = new Map(latest.map(({ number, status }) => [number, status]));
+          setSpots((current) => current.map((spot) => {
+            const status = statuses.get(spot.number);
+            return status && status !== spot.status ? { ...spot, status } : spot;
+          }));
+          if (currentVehicle) setVehicle(currentVehicle);
+        }
       } catch {
-        // Se vuelve a intentar en la próxima consulta.
+        if (active) { needsRefresh = true; setApiReady(false); }
       } finally {
-        if (active) timer = window.setTimeout(syncSpots, 3000);
+        if (active) timer = window.setTimeout(poll, 3000);
       }
     }
-    timer = window.setTimeout(syncSpots, 3000);
+    timer = window.setTimeout(poll, 3000);
     return () => {
       active = false;
       window.clearTimeout(timer);
     };
-  }, []);
+  }, [connected, refresh]);
 
   // Origen de la ruta: la posición real del vehículo si la tiene; si no (o si el backend responde 400), "Entrada".
   const vehicleHasPosition = vehicle?.position_x != null && vehicle?.position_y != null;
@@ -190,7 +226,7 @@ function ParkingApp({ user, onLogout }) {
       setRoute(data);
     } catch (error) {
       setRoute(null);
-      setNotice(error.status === 404 ? 'No hay una plaza guardada para tu vehículo.' : 'No se pudo calcular la ruta de regreso a tu vehículo.');
+      setNotice(RETURN_ERRORS[error.code] || 'No se pudo calcular la ruta de regreso a tu vehículo.');
     } finally { setBusy(false); }
   };
 
@@ -267,7 +303,7 @@ function ParkingApp({ user, onLogout }) {
         <button className="panel-handle" onClick={() => setPanelExpanded(!panelExpanded)}><span/><ChevronDown size={15}/></button>
         {activeTab === 'vehiculo' && <div className="destination-preview"><div className="preview-icon"><CarFront size={23}/></div><div><small>MI VEHÍCULO</small><strong>{parkedSpot ? `Plaza ${parkedSpot.number}` : 'Sin plaza guardada'}</strong><small>{parkedSpot ? (parkedSpot.zone_name || 'Estacionamiento') : 'Estaciona para guardar tu plaza'}</small></div></div>}
         <div className="detail-header"><div><p className="eyebrow">DESTINO SELECCIONADO</p><h2>{selectedSpot?.number || 'Selecciona una plaza'}</h2><p>{selectedSpot?.zone_name || 'Explora el plano para elegir'}</p></div><span className={`big-status ${selectedSpot?.status === 'libre' ? 'free' : 'busy'}`}><i/>{selectedSpot ? statusLabel(selectedSpot.status) : 'Sin selección'}</span></div>
-        <div className="destination-preview"><div className="preview-icon"><MapPin size={23}/></div><div><strong>{selectedSpot?.zone_name || 'Estacionamiento ParkIt'}</strong><small>{selectedSpot ? `Plaza ${selectedSpot.number} · Nivel -1` : 'Nivel subterráneo'}</small></div><span className="preview-distance"><Navigation size={14}/>{route?.distance ? `${route.distance.toFixed(0)} m` : '—'}</span></div>
+        <div className="destination-preview"><div className="preview-icon"><MapPin size={23}/></div><div><strong>{selectedSpot?.zone_name || 'Estacionamiento ParkIt'}</strong><small>{selectedSpot ? `Plaza ${selectedSpot.number} · Nivel -1` : 'Nivel subterráneo'}</small></div><span className="preview-distance" title="Unidades del plano (sin escala real)"><Navigation size={14}/>{route?.distance ? `${route.distance.toFixed(0)} uds` : '—'}</span></div>
         <div className="route-summary"><div className="route-line"><span className="route-origin"/><div/><span className="route-destination"/></div><div className="route-copy"><div><small>DESDE</small><strong>{originLabel}</strong></div><div><small>HASTA</small><strong>{selectedSpot?.number || '—'}</strong></div></div></div>
         {route?.path?.length > 0 && <div className="instruction-card"><span className="instruction-icon"><ArrowUp size={20}/></span><div><small>INDICACIÓN DE RUTA</small><strong>{route.path.length > 2 ? 'Continúa por el pasillo indicado' : 'Dirígete hacia tu plaza'}</strong><small>{route.path.length} puntos de navegación</small></div></div>}
         {notice && <div className="notice"><span>{notice}</span><button onClick={() => setNotice('')}><X size={14}/></button></div>}

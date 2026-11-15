@@ -61,6 +61,11 @@ export default function ParkingMap({ spots = [], selected, route, onSelect, zoom
 
     {/* Ruta calculada desde el backend */}
     {routePoints && <g><polyline points={routePoints} fill="none" stroke="#fff" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round"/><polyline points={routePoints} fill="none" stroke="#2878ed" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/><circle cx={route?.path?.[0]?.x} cy={route?.path?.[0]?.y} r="8" fill="#fff" stroke="#2878ed" strokeWidth="4"/><circle cx={route?.path?.at(-1)?.x} cy={route?.path?.at(-1)?.y} r="8" fill="#2878ed" stroke="#fff" strokeWidth="3"/></g>}
+    {/* Letras de las plazas por encima de la ruta: el punto azul del destino no debe taparlas (halo blanco para leerse sobre él) */}
+    {routePoints && ordered.map((number) => {
+      const p = POSITIONS[number];
+      return <text key={`label-${number}`} x={p.x} y={(p.zone === 'A' ? 304 : 50) + 42} textAnchor="middle" className="spot-label" stroke="#fff" strokeWidth="3" strokeLinejoin="round" paintOrder="stroke">{number}</text>;
+    })}
     {/* Vehículo (posición y orientación en grados; 0° = hacia arriba) */}
     {hasVehicle && <g transform={`translate(${vehicle.position_x} ${vehicle.position_y}) rotate(${heading})`} filter="url(#pinShadow)" aria-label="Tu vehículo"><circle r="15" fill="#2878ed" opacity=".18"/><rect x="-8" y="-13" width="16" height="26" rx="5" fill="#2878ed" stroke="#fff" strokeWidth="2"/><path d="M0 -18L7 -9H-7Z" fill="#fff" stroke="#2878ed" strokeWidth="1.5" strokeLinejoin="round"/></g>}
     {/* Entrada */}

@@ -120,14 +120,16 @@ function addInstructions(path) {
     const ox = next.x - node.x;
     const oy = next.y - node.y;
 
-    const cross = ix * oy - iy * ox; // > 0 = giro a la izquierda (antihorario)
+    // El plano es un SVG: el eje Y crece hacia ABAJO. Con ese eje, cross > 0 es un giro
+    // en sentido horario en pantalla, es decir, a la derecha (y cross < 0, a la izquierda).
+    const cross = ix * oy - iy * ox;
     const dot = ix * ox + iy * oy;
     const angle = Math.atan2(cross, dot);
 
     let instruction;
     if (Math.abs(angle) < TURN_THRESHOLD) instruction = 'recto';
-    else if (angle > 0) instruction = 'izquierda';
-    else instruction = 'derecha';
+    else if (angle > 0) instruction = 'derecha';
+    else instruction = 'izquierda';
 
     return { ...node, instruction };
   });
@@ -140,12 +142,14 @@ export function shortestPath(fromRef, toRef) {
   if (fromId === null || toId === null) {
     const err = new Error('Nodo no encontrado.');
     err.status = 404;
+    err.code = 'NODE_NOT_FOUND';
     throw err;
   }
   const { dist, prev } = dijkstra(graph.adj, fromId);
   if (dist.get(toId) === undefined) {
     const err = new Error('No existe una ruta entre esos nodos.');
     err.status = 404;
+    err.code = 'NO_ROUTE';
     throw err;
   }
   const path = addInstructions(reconstructPath(prev, fromId, toId).map((id) => graph.nodes.get(id)));
@@ -164,6 +168,7 @@ export function nearestFreeSpot(fromRef) {
   if (fromId === null) {
     const err = new Error('No hay nodos en el grafo.');
     err.status = 404;
+    err.code = 'NO_NODES';
     throw err;
   }
   const { dist, prev } = dijkstra(graph.adj, fromId);
@@ -183,6 +188,7 @@ export function nearestFreeSpot(fromRef) {
   if (!best) {
     const err = new Error('No hay plazas libres.');
     err.status = 404;
+    err.code = 'NO_FREE_SPOTS';
     throw err;
   }
 

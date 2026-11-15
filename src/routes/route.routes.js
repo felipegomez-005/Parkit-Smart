@@ -18,12 +18,14 @@ function resolveFrom(from) {
   if (typeof x !== 'number' || typeof y !== 'number') {
     const err = new Error('El vehículo no tiene posición conocida; no se puede usar from=vehicle.');
     err.status = 400;
+    err.code = 'VEHICLE_NO_POSITION';
     throw err;
   }
   const node = nearestNode(x, y);
   if (!node) {
     const err = new Error('No hay nodos en el grafo.');
     err.status = 404;
+    err.code = 'NO_NODES';
     throw err;
   }
   return node.id;
@@ -38,6 +40,7 @@ function resolveTo(to) {
   if (!spot) {
     const err = new Error('No hay una plaza guardada para el vehículo; no se puede usar to=parked.');
     err.status = 404;
+    err.code = 'NO_PARKED_SPOT';
     throw err;
   }
   return spot.label ?? `Plaza ${spot.number}`;
@@ -50,7 +53,7 @@ router.post('/', (req, res) => {
   try {
     res.json(shortestPath(resolveFrom(req.body?.from), resolveTo(req.body?.to)));
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message, code: err.code ?? undefined });
   }
 });
 
@@ -59,7 +62,7 @@ router.post('/free-spot', (req, res) => {
   try {
     res.json(nearestFreeSpot(resolveFrom(req.body?.from)));
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message, code: err.code ?? undefined });
   }
 });
 
