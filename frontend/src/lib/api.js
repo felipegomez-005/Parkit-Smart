@@ -50,6 +50,7 @@ async function request(method, path, body) {
   if (!res.ok) {
     const err = new Error(data?.error ?? `Error ${res.status}`);
     err.status = res.status;
+    err.code = data?.code;
     err.details = data?.details;
     throw err;
   }

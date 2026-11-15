@@ -140,12 +140,14 @@ export function shortestPath(fromRef, toRef) {
   if (fromId === null || toId === null) {
     const err = new Error('Nodo no encontrado.');
     err.status = 404;
+    err.code = 'NODE_NOT_FOUND';
     throw err;
   }
   const { dist, prev } = dijkstra(graph.adj, fromId);
   if (dist.get(toId) === undefined) {
     const err = new Error('No existe una ruta entre esos nodos.');
     err.status = 404;
+    err.code = 'NO_ROUTE';
     throw err;
   }
   const path = addInstructions(reconstructPath(prev, fromId, toId).map((id) => graph.nodes.get(id)));
@@ -164,6 +166,7 @@ export function nearestFreeSpot(fromRef) {
   if (fromId === null) {
     const err = new Error('No hay nodos en el grafo.');
     err.status = 404;
+    err.code = 'NO_NODES';
     throw err;
   }
   const { dist, prev } = dijkstra(graph.adj, fromId);
@@ -183,6 +186,7 @@ export function nearestFreeSpot(fromRef) {
   if (!best) {
     const err = new Error('No hay plazas libres.');
     err.status = 404;
+    err.code = 'NO_FREE_SPOTS';
     throw err;
   }
 

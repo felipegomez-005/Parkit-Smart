@@ -16,6 +16,13 @@ const INITIAL_SPOTS = [
 
 const statusLabel = (status) => status === 'libre' ? 'Disponible' : status === 'ocupado' ? 'Ocupada' : status || 'Sin datos';
 
+// Mensajes de "Volver a mi vehículo" según el `code` que devuelve POST /api/route.
+const RETURN_ERRORS = {
+  NO_PARKED_SPOT: 'No hay una plaza guardada para tu vehículo.',
+  NODE_NOT_FOUND: 'No se encontró en el plano la entrada o la plaza de tu vehículo.',
+  NO_ROUTE: 'No hay un camino entre la entrada y la plaza de tu vehículo.',
+};
+
 const AUTH_ERROR = 'Token inválido o ausente';
 
 // Iniciales para el avatar (máx. 2); "PS" en modo demostración.
@@ -202,7 +209,7 @@ function ParkingApp({ user, onLogout }) {
       setRoute(data);
     } catch (error) {
       setRoute(null);
-      setNotice(error.status === 404 ? 'No hay una plaza guardada para tu vehículo.' : 'No se pudo calcular la ruta de regreso a tu vehículo.');
+      setNotice(RETURN_ERRORS[error.code] || 'No se pudo calcular la ruta de regreso a tu vehículo.');
     } finally { setBusy(false); }
   };
 
