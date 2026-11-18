@@ -6,7 +6,7 @@
 //   1 = solo la plaza 1 (prueba con un sensor y un par de LEDs)
 //   2 = plazas 1 y 2
 //   6 = prototipo completo
-const int PLAZAS_ACTIVAS = 2;
+const int PLAZAS_ACTIVAS = 6;
 
 // El FC-51 normalmente pone su salida en LOW cuando detecta un obstaculo.
 // Si en tu prueba sale al reves, cambia esto a false.
