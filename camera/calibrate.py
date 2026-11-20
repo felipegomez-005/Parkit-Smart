@@ -58,6 +58,7 @@ def main():
 
     cfg = load_config(args.config)
     frame = grab_frame(cfg, args.image)
+    cv2.imwrite("calibracion_base.jpg", frame)  # imagen limpia: la usa calibrate_map.py
     canvas = frame.copy()
     rois = {}
 

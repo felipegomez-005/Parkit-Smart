@@ -1,5 +1,7 @@
 """Funciones compartidas del sistema de cámara de ParkIt Smart."""
 import json
+import math
+import os
 import platform
 
 import cv2
@@ -144,3 +146,26 @@ def draw_overlay(frame, rois, raw_spots, markers):
         cv2.putText(out, f"ID {m['markerId']}", (cx - 20, cy - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 255), 2)
     return out
+
+
+# ---------- Posición del auto en el mapa (ArUco -> coordenadas del plano 688 x 388) ----------
+def load_homography(path):
+    """Matriz que convierte píxeles de la cámara a coordenadas del plano. None si no está calibrada."""
+    if not os.path.exists(path):
+        return None
+    return np.array(load_json(path)["matrix"], dtype=np.float64)
+
+
+def to_plano(H, x, y):
+    p = cv2.perspectiveTransform(np.array([[[x, y]]], dtype=np.float64), H)[0][0]
+    return float(p[0]), float(p[1])
+
+
+def vehicle_pose(H, corners):
+    """(x, y, orientación) en el plano. El FRENTE del auto es el lado superior del marcador.
+    Orientación: 0 = arriba, creciendo en sentido horario (90 = derecha)."""
+    pts = np.array(corners, dtype=np.float64)  # esquinas: sup-izq, sup-der, inf-der, inf-izq
+    cx, cy = to_plano(H, *pts.mean(axis=0))
+    fx, fy = to_plano(H, *((pts[0] + pts[1]) / 2))
+    ori = math.degrees(math.atan2(fx - cx, -(fy - cy))) % 360
+    return round(cx, 1), round(cy, 1), int(round(ori)) % 360

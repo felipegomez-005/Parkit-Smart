@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 
 const POSITIONS = {
   P1: { x: 510, y: 327, zone: 'A' }, P2: { x: 575, y: 327, zone: 'A' },
@@ -8,10 +8,45 @@ const POSITIONS = {
 const ROADS = 'M95 152H640 M100 276H575 M232 152V276 M458 152V276 M344 384V276';
 const free = (status) => status === 'libre';
 
+// Si el auto está a más de esta distancia (unidades del plano) de la ruta, se muestra la ruta completa.
+const MAX_OFF_ROUTE = 45;
+
+// Deja solo el tramo que falta: desde el punto de la ruta más cercano al auto hasta el destino.
+// `fromSegment` evita que el trazo "retroceda" si el auto pasa cerca de un tramo ya recorrido.
+export function remainingPath(path, vehicle, fromSegment = 0) {
+  const px = vehicle?.position_x;
+  const py = vehicle?.position_y;
+  if (!Array.isArray(path) || path.length < 2 || !Number.isFinite(px) || !Number.isFinite(py)) {
+    return { points: path, segment: fromSegment };
+  }
+  let best = null;
+  for (let i = fromSegment; i < path.length - 1; i += 1) {
+    const a = path[i];
+    const b = path[i + 1];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / len2));
+    const x = a.x + t * dx;
+    const y = a.y + t * dy;
+    const dist = Math.hypot(px - x, py - y);
+    if (!best || dist < best.dist) best = { i, x, y, dist };
+  }
+  if (!best || best.dist > MAX_OFF_ROUTE) return { points: path, segment: fromSegment };
+  return { points: [{ x: best.x, y: best.y }, ...path.slice(best.i + 1)], segment: best.i };
+}
+
 export default function ParkingMap({ spots = [], selected, route, onSelect, zoom = 1, vehicle, parkedNumber }) {
   const hasVehicle = Number.isFinite(vehicle?.position_x) && Number.isFinite(vehicle?.position_y);
   const heading = Number.isFinite(vehicle?.orientation) ? vehicle.orientation : 0;
-  const routePoints = route?.path?.map((point) => `${point.x},${point.y}`).join(' ');
+  // La ruta se va acortando a medida que el auto avanza por ella.
+  const routeKey = route?.path ? `${route.path.length}|${route.path[0]?.x},${route.path[0]?.y}|${route.path.at(-1)?.x},${route.path.at(-1)?.y}` : '';
+  const progress = useRef({ key: '', segment: 0 });
+  if (progress.current.key !== routeKey) progress.current = { key: routeKey, segment: 0 };
+  const trimmed = remainingPath(route?.path, vehicle, progress.current.segment);
+  progress.current.segment = trimmed.segment;
+  const visiblePath = trimmed.points;
+  const routePoints = visiblePath?.map((point) => `${point.x},${point.y}`).join(' ');
   const ordered = ['P5', 'P6', 'P3', 'P4', 'P1', 'P2'];
   return <svg className="parking-map" style={{ transform: `scale(${zoom})` }} viewBox="0 0 688 388" role="img" aria-label="Plano interactivo del estacionamiento ParkIt Smart">
     <defs>
@@ -60,7 +95,7 @@ export default function ParkingMap({ spots = [], selected, route, onSelect, zoom
     })}
 
     {/* Ruta calculada desde el backend */}
-    {routePoints && <g><polyline points={routePoints} fill="none" stroke="#fff" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round"/><polyline points={routePoints} fill="none" stroke="#2878ed" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/><circle cx={route?.path?.[0]?.x} cy={route?.path?.[0]?.y} r="8" fill="#fff" stroke="#2878ed" strokeWidth="4"/><circle cx={route?.path?.at(-1)?.x} cy={route?.path?.at(-1)?.y} r="8" fill="#2878ed" stroke="#fff" strokeWidth="3"/></g>}
+    {routePoints && <g><polyline points={routePoints} fill="none" stroke="#fff" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round"/><polyline points={routePoints} fill="none" stroke="#2878ed" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/><circle cx={visiblePath?.[0]?.x} cy={visiblePath?.[0]?.y} r="8" fill="#fff" stroke="#2878ed" strokeWidth="4"/><circle cx={route?.path?.at(-1)?.x} cy={route?.path?.at(-1)?.y} r="8" fill="#2878ed" stroke="#fff" strokeWidth="3"/></g>}
     {/* Letras de las plazas por encima de la ruta: el punto azul del destino no debe taparlas (halo blanco para leerse sobre él) */}
     {routePoints && ordered.map((number) => {
       const p = POSITIONS[number];

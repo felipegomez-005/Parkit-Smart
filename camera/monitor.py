@@ -9,6 +9,7 @@ Cada vez que cambia algo se guarda state.json y, si backend.enabled = true, se e
 import argparse
 import json
 import os
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -16,8 +17,8 @@ import cv2
 import requests
 
 from parkit_vision import (SPOT_IDS, Debouncer, classify_color, detect_markers,
-                           draw_overlay, load_config, load_json, make_detector,
-                           normalize_frame, open_camera)
+                           draw_overlay, load_config, load_homography, load_json,
+                           make_detector, normalize_frame, open_camera, vehicle_pose)
 
 
 def analyze(frame, cfg, rois, detector):
@@ -72,6 +73,21 @@ def publish(cfg, payload):
         print(f"[aviso] Error al actualizar plazas: {error}")
 
 
+def publish_vehicle(url, pose):
+    x, y, orientation = pose
+    try:
+        requests.post(url, json={"x": x, "y": y, "orientation": orientation}, timeout=3).raise_for_status()
+    except requests.RequestException as error:
+        print(f"[aviso] Error al actualizar la posición del auto: {error}")
+
+
+def pose_changed(new, old):
+    if old is None:
+        return True
+    diff = abs(new[2] - old[2]) % 360
+    return abs(new[0] - old[0]) > 2 or abs(new[1] - old[1]) > 2 or min(diff, 360 - diff) > 5
+
+
 def run_image(args, cfg, rois, detector):
     frame = cv2.imread(args.image)
     if frame is None:
@@ -93,6 +109,17 @@ def run_live(args, cfg, rois, detector):
     marker_deb = Debouncer(cfg["stability_frames"])
     known_markers = set()
     last_payload, last_sent, fails = None, 0.0, 0
+    vcfg = cfg.get("vehicle", {})
+    veh_id = vcfg.get("marker_id", 0)
+    veh_url = vcfg.get("url") or cfg["backend"]["url"].rsplit("/", 1)[0] + "/vehicle"
+    veh_every = vcfg.get("min_interval_seconds", 0.3)
+    H = load_homography(vcfg.get("homography_file", "map_homography.json"))
+    last_pose, last_pose_t = None, 0.0
+    if cfg["backend"].get("enabled"):
+        if H is None:
+            print("[aviso] Falta map_homography.json: el auto NO se moverá en el mapa. Ejecuta: python calibrate_map.py")
+        else:
+            print(f"El auto (ArUco ID {veh_id}) se moverá en el mapa.")
     print("Monitoreando... (Ctrl+C para detener)")
     try:
         while True:
@@ -109,6 +136,14 @@ def run_live(args, cfg, rois, detector):
             fails = 0
             frame = normalize_frame(frame, cfg)
             raw, markers = analyze(frame, cfg, rois, detector)
+
+            if H is not None and cfg["backend"].get("enabled") and time.time() - last_pose_t >= veh_every:
+                mk = next((m for m in markers if m["markerId"] == veh_id), None)
+                if mk is not None:
+                    pose = vehicle_pose(H, mk["corners"])
+                    if pose_changed(pose, last_pose):
+                        threading.Thread(target=publish_vehicle, args=(veh_url, pose), daemon=True).start()
+                        last_pose, last_pose_t = pose, time.time()
 
             spot_status = {s: spot_deb.update(s, raw[s]["status"], "unknown") for s in raw}
             seen = {m["markerId"]: (m["spotId"] or "outside") for m in markers}
@@ -128,7 +163,7 @@ def run_live(args, cfg, rois, detector):
                                         for s in payload["spots"])
                     print(datetime.now().strftime("%H:%M:%S"), resumen)
                     save_state(cfg["state_file"], payload)
-                publish(cfg, payload)
+                threading.Thread(target=publish, args=(cfg, dict(payload)), daemon=True).start()
                 last_sent = time.time()
                 last_payload = {k: v for k, v in payload.items() if k != "timestamp"}
 
@@ -136,7 +171,9 @@ def run_live(args, cfg, rois, detector):
                 cv2.imshow("ParkIt Smart - camara (Q para salir)", draw_overlay(frame, rois, raw, markers))
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
-            time.sleep(cfg["interval_seconds"])
+            fin = time.time() + cfg["interval_seconds"]
+            while time.time() < fin:
+                cap.grab()  # descarta imagenes viejas para no ir atrasado
     except KeyboardInterrupt:
         pass
     finally:

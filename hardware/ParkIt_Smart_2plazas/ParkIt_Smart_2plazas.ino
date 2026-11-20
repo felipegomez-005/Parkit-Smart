@@ -15,9 +15,9 @@ const bool OCUPADO_ES_LOW = true;
 const int TOTAL_PLAZAS = 6;
 
 // Pines                      P1  P2  P3  P4  P5  P6
-const int SENSORES[TOTAL_PLAZAS] = {32, 33, 27, 34, 35, 39};
+const int SENSORES[TOTAL_PLAZAS] = {32, 33, 27, 34, 35, 5};
 const int LED_A[TOTAL_PLAZAS]   = {25, 18, 21, 23, 17, 13};
-const int LED_B[TOTAL_PLAZAS]    = {26, 19, 22, 16,  4, 14};
+const int LED_B[TOTAL_PLAZAS]    = {26, 19, 22, 15,  4, 14};
 
 // Ultimo estado conocido de cada plaza (-1 = aun sin leer)
 int estadoAnterior[TOTAL_PLAZAS];
