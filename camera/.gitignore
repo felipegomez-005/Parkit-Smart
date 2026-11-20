@@ -5,3 +5,5 @@ __pycache__/
 /state.json.tmp
 /calibracion.jpg
 /markers/
+/calibracion_base.jpg
+/map_homography.json
